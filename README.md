@@ -26,3 +26,10 @@ Deliverables
 ------------
 - The source code written for this project, along with accompanying documentation.
 - A report describing the process, and reflecting on the challenges we encountered.
+
+Schedule
+--------
+- 26. August – 3. September: Idris exercises and literature study.
+- 3. September – 1. December: Main project and report.
+    - 17. September: Deadline for simply type lambda calculus
+- 1. December – 16. December: Final report pass.
