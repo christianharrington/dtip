@@ -1,3 +1,17 @@
+# Idris:
+*.ibc
+*.o
+*.a
+*.so
+*.dll
+*.dylib
+*.swp
+*~
+
+# Sublime Text
+*.sublime-workspace
+
+# LaTeX:
 *.acn
 *.acr
 *.alg
