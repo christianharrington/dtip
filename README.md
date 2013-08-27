@@ -13,7 +13,7 @@ Through this project, we aim to identify some of the challenges programmers face
 Method
 ------
 - We will start by familiarizing ourselves with Idris, through the official Idris tutorials and documentation, and other relevant materials.
-- We will implement a simple programming language in Idris, along with an interpreter, based on Edwin Brady's "Well-typed Interpreter".
+- We will implement a simple programming language in Idris as an embedded DSL, along with an interpreter, based on Edwin Brady's presentation of Augustsson and Carlsson's well-typed interpreter. We do not plan on implementing a parser.
 - We will implement a optimization function, using dependent types to check the correctness of the optimizations.
 - We will build on this simple programming language, using the general progression described in Types and Programming Languages (2002) by Benjamin Pierce. These extensions could include:
     - The Unit type
