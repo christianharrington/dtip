@@ -31,5 +31,10 @@ Schedule
 --------
 - 26. August – 3. September: Idris exercises and literature study.
 - 3. September – 1. December: Main project and report.
-    - 17. September: Deadline for simply type lambda calculus
+    - 2. September: First try at a well-typed interpreter
+    - 3. – 17. September: Work on:
+	    - Translating to well-typed from not-so-well-typed terms
+		- Stack machine
+		- Expand well-typed interpreter
 - 1. December – 16. December: Final report pass.
+
