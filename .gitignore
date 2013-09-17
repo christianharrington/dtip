@@ -6,9 +6,12 @@
 *.dll
 *.dylib
 *.swp
-*~
 
-# Sublime Text
+# Emacs:
+*~
+\#*\#
+
+# Sublime Text:
 *.sublime-workspace
 
 # LaTeX:
