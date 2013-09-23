@@ -19,7 +19,6 @@ data Prog : Nat -> Nat -> Type where
 (+++) (i :: p1) p2 = i :: ((+++) p1 p2)
 infixr 10 +++
 
-partial
 run : Prog s s' -> Vect s Int -> Vect s' Int
 run (PUSH v :: is) vs               = run is (v :: vs)
 run (ADD    :: is) (v1 :: v2 :: vs) = run is ((v1 + v2) :: vs)
@@ -34,11 +33,18 @@ test = [PUSH 100, PUSH 3, DIV]
 test2 : Prog 2 1
 test2 = [ADD]
 
-test3 : Prog 0 1
+test3 : Prog s (S s)
 test3 = [PUSH 5]
 
 using (G: Vect n Tip)
   partial
-  compile : Expr G t -> Prog Z (S Z)
-  compile (Val i)         = [PUSH i]
---  compile (Ope (+) v1 v2) = let p = compile v1 +++ compile v2 +++ [ADD] in p
+  compile : Env G -> Expr G t -> Prog s (S s)
+  compile env (Val i)         = [PUSH i]
+  compile env (Ope (+) v1 v2) = compile env v1 +++ compile env v2 +++ [ADD]
+ 
+  test4 : Expr Nil TipInt
+  test4 = Ope (+) (Val 3) (Val 4)
+
+  partial
+  test5 : Prog 0 1
+  test5 = compile Nil test4
