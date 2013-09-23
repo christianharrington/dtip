@@ -22,9 +22,9 @@ mutual
   getProgEff fZ     (MkG {s=s} {s'=s'} _ _) = (s, s')
   getProgEff (fS i) (MkG ps p)              = getProgEff i ps
 
-add5 : Prog 0 NilG 1 1
+add5 : Prog Z NilG (S Z) (S Z)
 add5 = [PUSH 5, ADD]
-test : Prog 1 (MkG NilG add5) 0 1
+test : Prog (S Z) (MkG NilG add5) Z (S Z)
 test = [PUSH 2, FUNC 0]
 
 partial
