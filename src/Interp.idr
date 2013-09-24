@@ -1,7 +1,84 @@
 module Interp
-import Data.SortedMap
+import Decidable.Decidable
+import Decidable.Equality
+
+%default total
 
 data Tip = TipBool | TipInt | TipFun Tip Tip
+
+---------- Properties of Tip ----------
+-- tipFunEq : (ps: Dec (s = t)) -> (pt: Dec (s' = t')) -> Dec (TipFun s s' = TipFun t t')
+-- tipFunEq (Yes ps) (Yes pt) = Yes ?tipFunEqcase1
+-- tipFunEq (Yes ps) (No pt)  = No ?tipFunEqcase2
+-- tipFunEq (No ps)  (Yes pt) = No ?tipFunEqcase3
+-- tipFunEq (No ps)  (No pt)  = No ?tipFunEqcase4
+
+tipIntNotTipBool : (p: TipInt = TipBool) -> _|_
+tipIntNotTipBool {p = refl} impossible -- impossible makes sure that the type checker will never accept such a claim
+
+tipIntNotTipFun : (p: TipInt = (TipFun t t')) -> _|_
+tipIntNotTipFun {p = refl} impossible
+
+tipBoolNotTipFun : (p: TipBool = (TipFun t t')) -> _|_
+tipBoolNotTipFun {p = refl} impossible
+
+-- tipFunEqImpliesArgEq : (TipFun s s' = TipFun t t') -> (s = t)
+-- tipFunEqImpliesArgEq p = ?tipFunEqImpliesArgEqYescase
+-- --tipFunEqImpliesArgEq (No p)  = ?tipFunEqImpliesArgEqNocase
+
+-- tipFunEqImpliesResultEq : (ptf: Dec (TipFun s s' = TipFun t t')) -> Dec (s' = t')
+-- tipFunEqImpliesResultEq (Yes p) = ?tipFunEqImpliesResultEqYescase
+-- tipFunEqImpliesResultEq (No p)  = ?tipFunEqImpliesResultEqNocase
+
+{-
+     ¬ (s = t)      (s' = s')
+  -----------------------------
+  ¬ (TipFun s s' = TipFun t s')
+-}
+tipFunArgsNeq : {s: Tip, s': Tip, t: Tip, t':Tip} -> (pst: s = t -> _|_) -> (ps': s' = s') -> ((ptf: (TipFun s s') = (TipFun t s')) -> _|_)
+tipFunArgsNeq p {ps' = refl} {pst = refl} = ?tipFunArgsNeqcase 
+
+{-
+     (s = s)     ¬ (s' = t')
+  -----------------------------
+  ¬ (TipFun s s' = TipFun s t')
+-}
+tipFunResultNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (ps: s = s) -> (s' = t' -> _|_) -> ((ptf: (TipFun s s') = (TipFun s t')) -> _|_)
+tipFunResultNeq {ps = refl} p {ptf = refl} = ?tipFunResultNeqcase
+
+{-
+    ¬ (s = t)     ¬ (s' = t')
+  -----------------------------
+  ¬ (TipFun s s' = TipFun t t')
+-}
+tipFunBothNeq : {s: Tip, s': Tip, t: Tip, t':Tip} -> (s = t -> _|_) -> (s' = t' -> _|_) -> ((ptf: (TipFun s s') = (TipFun t t')) -> _|_)
+tipFunBothNeq p p' {ptf = refl} = ?tipFunBothNeqcase 
+
+instance DecEq Tip where
+  decEq TipInt        TipInt        = Yes refl
+  decEq TipBool       TipBool       = Yes refl
+  decEq TipInt        TipBool       = No tipIntNotTipBool
+  decEq TipBool       TipInt        = No $ negEqSym tipIntNotTipBool -- negEqSym : (a = b -> _|_) -> (b = a -> _|_)
+  decEq TipInt        (TipFun t t') = No tipIntNotTipFun
+  decEq (TipFun t t') TipInt        = No $ negEqSym tipIntNotTipFun
+  decEq TipBool       (TipFun t t') = No tipBoolNotTipFun
+  decEq (TipFun t t') TipBool       = No $ negEqSym tipBoolNotTipFun
+  decEq (TipFun s s') (TipFun t t') with (decEq s t)
+    decEq (TipFun s s') (TipFun s t') | Yes refl with (decEq s' t')
+      decEq (TipFun s s') (TipFun s s') | (Yes refl) | (Yes refl) = Yes refl
+      decEq (TipFun s s') (TipFun s t') | (Yes refl) | (No p) = No ?tipDecEqTipFunYesNocase
+    decEq (TipFun s s') (TipFun t t') | No p with (decEq s' t')
+      decEq (TipFun s s') (TipFun t s') | (No p) | (Yes refl) = No $ ?tipDecEqTipFunNoYescase
+      decEq (TipFun s s') (TipFun t t') | (No p) | (No p') = No $ tipFunBothNeq p p' --?tipDecEqTipFunNoNocase
+
+
+    -- tipFunEq (decEq s t) (decEq s' t')
+
+-- instance Eq Tip where
+--   TipInt     == TipInt         = True
+--   TipBool    == TipBool        = True
+--   (TipFun f x) == (TipFun g y) = (f == g) && (x == y)
+--   _ == _                       = False
 
 interpTip : Tip -> Type
 interpTip TipInt  = Int
@@ -42,11 +119,57 @@ using (G: Vect n Tip)
     index_next  = pop
 
   ----- Examples -----
-  val : Expr G TipInt
+  val : Expr Nil TipInt
   val = Val 0
 
-  lam : Expr G (TipFun TipInt TipInt)
+  lam : Expr Nil (TipFun TipInt TipInt)
   lam = expr (\x => x)
 
-  add' : Expr G (TipFun TipInt (TipFun TipInt TipInt))
+  add' : Expr Nil (TipFun TipInt (TipFun TipInt TipInt))
   add' = expr (\x => (\y => Ope (+) x y))
+
+---------- Proofs ----------
+
+Interp.tipDecEqTipFunNoYescase = proof {
+  intros;
+  refine tipFunArgsNeq;
+  trivial;
+  refine refl;
+  trivial;
+  trivial;
+}
+
+Interp.tipDecEqTipFunYesNocase = proof {
+  intros;
+  refine tipFunResultNeq;
+  refine refl;
+  trivial;
+  trivial;
+  trivial;
+}
+
+Interp.tipFunBothNeqcase = proof {
+  intros;
+  refine p;
+  refine refl;
+}
+
+Interp.tipFunArgsNeqcase = proof {
+  intros;
+  refine p;
+  refine refl;
+}
+
+Interp.tipFunResultNeqcase = proof {
+  intros;
+  refine p;
+  refine refl;
+}
+
+-- Interp.tipFunEqcase1 = proof {
+--   intros;
+--   rewrite ps;
+--   rewrite pt;
+--   refine refl;
+-- }
+
