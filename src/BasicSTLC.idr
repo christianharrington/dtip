@@ -40,7 +40,7 @@ mutual
   partial
   check : CheckTerm -> (G: Vect n Tip) -> (t: Tip) -> Maybe (Expr G t)
   check (lInf iterm) G t            = do (t' ** e) <- infer iterm G
-                                         expr <- exprTipEqSwap t' t G (decEq t' t) e
+                                         expr <- exprTipEqSwap t' t G (decEq t' t) e -- Swap t with t'
                                          return expr
   check (lLam body) G (TipFun t t') = do b <- check body (t :: G) t'
                                          return $ Lam b
@@ -50,7 +50,7 @@ mutual
   infer : InfTerm -> (G: Vect n Tip) -> Maybe (t: Tip ** Expr G t)
   infer (lAnno cterm t) G = do expr <- check cterm G t
                                return (_ ** expr)
-  infer (lApp f x) G      = do (TipFun t t' ** f') <- infer f G
+  infer (lApp f x) G      = do (TipFun t t' ** f') <- infer f G -- Should probably fail more gracefully
                                x'                  <- check x G t
                                return (_ ** App f' x')
   infer (lVar n) G        = do i        <- natToFinFromVect n G
@@ -58,7 +58,7 @@ mutual
                                return (_ ** Var p) 
   infer (lVal i) G        = Just (_ ** Val i)
   infer (lOpe op) G       = case op of -- case expression used here as different operators require different operand types
-                                 Plus e1 e2 => do (TipInt ** leftOp)  <- infer e1 G
+                                 Plus e1 e2 => do (TipInt ** leftOp)  <- infer e1 G -- Should probably fail more gracefully
                                                   (TipInt ** rightOp) <- infer e2 G
                                                   return (_ ** Ope (+) leftOp rightOp)
                                  _          => Nothing
@@ -66,37 +66,50 @@ mutual
 
 
 --- Type checking examples ---
-using (G: Vect n Tip)
-  partial
-  opTest : Maybe (t: Tip ** Expr Nil t)
-  opTest =  infer (lApp (lAnno (lLam (lLam (lInf (lOpe (Plus (lVar 1) (lVar 0)))))) (TipFun TipInt (TipFun TipInt TipInt))) (lInf (lVal 3))) Nil
+partial
+testOp : Maybe (t: Tip ** Expr Nil t)
+testOp =  infer (lApp (lAnno (lLam (lLam (lInf (lOpe (Plus (lVar 1) (lVar 0)))))) (TipFun TipInt (TipFun TipInt TipInt))) (lInf (lVal 3))) Nil
   
-  partial
-  opTestNeg : Maybe (t: Tip ** Expr Nil t)
-  opTestNeg =  infer (lApp (lAnno (lLam (lLam (lInf (lOpe (Plus (lVar 1) (lVar 0)))))) (TipFun TipBool (TipFun TipInt TipInt))) (lInf (lVal 3))) Nil
+partial
+testOpNeg : Maybe (t: Tip ** Expr Nil t)
+testOpNeg =  infer (lApp (lAnno (lLam (lLam (lInf (lOpe (Plus (lVar 1) (lVar 0)))))) (TipFun TipBool (TipFun TipInt TipInt))) (lInf (lVal 3))) Nil
 
-  partial
-  valTest : Maybe (t: Tip ** Expr Nil t)
-  valTest = infer (lVal 10) Nil
+partial
+testVal : Maybe (t: Tip ** Expr Nil t)
+testVal = infer (lVal 10) Nil
 
-  partial
-  idTest : Maybe (t: Tip ** Expr Nil t)
-  idTest = infer (lAnno (lLam (lInf (lVar 0))) (TipFun TipInt TipInt)) Nil
+partial
+testId : Maybe (t: Tip ** Expr Nil t)
+testId = infer (lAnno (lLam (lInf (lVar 0))) (TipFun TipInt TipInt)) Nil
 
-  partial
-  idTestNeg : Maybe (t: Tip ** Expr Nil t)
-  idTestNeg = infer (lAnno (lLam (lInf (lVar 0))) TipInt) Nil
+partial
+testIdNeg : Maybe (t: Tip ** Expr Nil t)
+testIdNeg = infer (lAnno (lLam (lInf (lVar 0))) TipInt) Nil
 
-  partial
-  appTest : Maybe (Expr Nil (TipFun (TipFun TipInt TipInt) TipInt))
-  appTest = check (lLam (lInf (lApp (lVar 0) (lInf (lVal 1))))) Nil (TipFun (TipFun TipInt TipInt) TipInt)
+partial
+testApp : Maybe (Expr Nil (TipFun (TipFun TipInt TipInt) TipInt))
+testApp = check (lLam (lInf (lApp (lVar 0) (lInf (lVal 1))))) Nil (TipFun (TipFun TipInt TipInt) TipInt)
 
-  partial
-  appTest' : Maybe (Expr Nil (TipFun (TipFun TipInt TipInt) (TipFun TipInt TipInt)))
-  appTest' = check (lLam (lInf (lApp (lVar 0) (lInf (lVal 1))))) Nil (TipFun (TipFun TipInt TipInt) (TipFun TipInt TipInt))
+partial
+testAppNeg : Maybe (Expr Nil (TipFun TipInt TipInt))
+testAppNeg = check (lLam (lInf (lApp (lVar 0) (lInf (lVal 1))))) Nil (TipFun TipInt TipInt)
 
--- appTest' : Either TypeError Tip
--- appTest' = infer (lAnno (lLam (lLam (lInf (lApp (lVar 0) (lInf (lVar 1)))))) (TipFun (TipFun TipInt TipInt) (TipFun TipInt TipInt))) Nil
+partial
+testApp' : Maybe (Expr Nil (TipFun (TipFun TipInt TipInt) (TipFun TipInt TipInt)))
+testApp' = check (lLam (lLam (lInf (lApp (lVar 1) (lInf (lVar 0)))))) Nil (TipFun (TipFun TipInt TipInt) (TipFun TipInt TipInt))
+
+partial
+testApp'Neg : Maybe (Expr Nil (TipFun (TipFun TipInt TipInt) (TipFun TipInt TipBool)))
+testApp'Neg = check (lLam (lLam (lInf (lApp (lVar 1) (lInf (lVar 0)))))) Nil (TipFun (TipFun TipInt TipInt) (TipFun TipInt TipBool))
+
+-- (App (lAnno (lLam (lInf (lOpe (Plus (lVar 0) (lVar 1))))) (TipFun TipInt (TipFun TipInt TipInt))) (lInf (lVal 5)))
+partial
+testApp'' : Maybe (Expr Nil TipInt)
+testApp'' = check (lInf (lApp (lAnno (lLam (lInf (lOpe (Plus (lVar 0) (lVal 4))))) (TipFun TipInt TipInt)) (lInf (lVal 4)))) Nil TipInt
+
+partial
+testApp''' : Maybe (Expr Nil TipInt)
+testApp''' = check (lInf (lApp (lAnno (lLam (lInf (lOpe (Plus (lVar 0) (lApp (lAnno (lLam (lInf (lOpe (Plus (lVar 0) (lVar 1))))) (TipFun TipInt TipInt)) (lInf (lVal 5))))))) (TipFun TipInt TipInt)) (lInf (lVal 4)))) Nil TipInt
 
 ---------- Proofs ----------
 
