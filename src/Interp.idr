@@ -1,14 +1,12 @@
 module Interp
 import Tip
-import Decidable.Decidable
-import Decidable.Equality
 
 %default total
 
 interpTip : Tip -> Type
 interpTip TipInt  = Int
 interpTip TipBool = Bool
-interpTip (TipFun T T') = interpTip T -> interpTip T'
+interpTip (TipFun T T') = interpTip T -> interpTip T' 
 
 using (G: Vect n Tip)
   data HasType : (i : Fin n) -> Vect n Tip -> Tip -> Type where
@@ -16,11 +14,14 @@ using (G: Vect n Tip)
     pop  : HasType k G t -> HasType (fS k) (u :: G) t 
 
   data Expr : Vect n Tip -> Tip -> Type where
-    Var : HasType i G t -> Expr G t
-    Val : (i : Int) -> Expr G TipInt
-    Lam : Expr (t :: G) t' -> Expr G (TipFun t t')
-    App : Expr G (TipFun t t') -> Expr G t -> Expr G t'
-    Ope : (interpTip a -> interpTip b -> interpTip c) -> Expr G a -> Expr G b -> Expr G c
+    Var  : HasType i G t -> Expr G t
+    Val  : (i : Int) -> Expr G TipInt
+    Lam  : Expr (t :: G) t' -> Expr G (TipFun t t')
+    App  : Expr G (TipFun t t') -> Expr G t -> Expr G t'
+    If   : Expr G TipBool -> Expr G t -> Expr G t -> Expr G t
+    Plus : Expr G TipInt -> Expr G TipInt -> Expr G TipInt
+    Ope  : (interpTip a -> interpTip b -> interpTip c) -> Expr G a -> Expr G b -> Expr G c
+  
 
   data Env : Vect n Tip -> Type where
     Nil  : Env Nil
@@ -35,6 +36,8 @@ using (G: Vect n Tip)
   interp env (Val i)     = i
   interp env (Lam e)     = \x => interp (x :: env) e
   interp env (App f a)   = interp env f (interp env a)
+  interp env (If c t f)  = if interp env c then interp env t else interp env f
+  interp env (Plus a b)  = (interp env a) + (interp env b)
   interp env (Ope f a b) = f (interp env a) (interp env b)
 
   dsl expr
