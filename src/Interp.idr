@@ -13,11 +13,16 @@ using (G: Vect n Tip)
     stop : HasType fZ (t :: G) t
     pop  : HasType k G t -> HasType (fS k) (u :: G) t 
 
-  data BinOp: Tip -> Tip -> Tip -> Type where
+  data BinOp : Tip -> Tip -> Tip -> Type where
     Add : BinOp TipInt TipInt TipInt
     Sub : BinOp TipInt TipInt TipInt
     Mul : BinOp TipInt TipInt TipInt
     Div : BinOp TipInt TipInt TipInt
+    Eql : BinOp TipInt TipInt TipBool
+    Lt  : BinOp TipInt TipInt TipBool
+
+  data UnOp : Tip -> Tip -> Type where
+    Nay : UnOp TipBool TipBool
 
   data Expr : Vect n Tip -> Tip -> Type where
     Var  : HasType i G t -> Expr G t
@@ -26,7 +31,8 @@ using (G: Vect n Tip)
     Lam  : Expr (t :: G) t' -> Expr G (TipFun t t')
     App  : Expr G (TipFun t t') -> Expr G t -> Expr G t'
     If   : Expr G TipBool -> Expr G t -> Expr G t -> Expr G t
-    Ope  : BinOp a b c -> Expr G a -> Expr G b -> Expr G c      
+    OpU  : UnOp a b -> Expr G a -> Expr G b 
+    OpB  : BinOp a b c -> Expr G a -> Expr G b -> Expr G c      
 
   data Env : Vect n Tip -> Type where
     Nil  : Env Nil
@@ -44,11 +50,14 @@ using (G: Vect n Tip)
   interp env (Lam e)       = \x => interp (x :: env) e
   interp env (App f a)     = interp env f (interp env a)
   interp env (If c t f)    = if interp env c then interp env t else interp env f
-  interp env (Ope Add a b) = (interp env a) + (interp env b)
-  interp env (Ope Sub a b) = (interp env a) - (interp env b)
-  interp env (Ope Mul a b) = (interp env a) * (interp env b)
-  interp env (Ope Div a b) = (cast ((cast (interp env a)) / (cast (interp env b))))
-
+  interp env (OpB Add a b) = (interp env a) + (interp env b)
+  interp env (OpB Sub a b) = (interp env a) - (interp env b)
+  interp env (OpB Mul a b) = (interp env a) * (interp env b)
+  interp env (OpB Div a b) = (cast ((cast (interp env a)) / (cast (interp env b))))
+  interp env (OpB Eql a b) = (interp env a) == (interp env b)
+  interp env (OpB Lt  a b) = (interp env a) < (interp env b)
+  interp env (OpU Nay a)   = not (interp env a)
+ 
   dsl expr
     lambda      = Lam
     variable    = Var
@@ -63,4 +72,4 @@ using (G: Vect n Tip)
   lam = expr (\x => x)
 
   add' : Expr Nil (TipFun TipInt (TipFun TipInt TipInt))
-  add' = expr (\x => (\y => Ope Add x y))
+  add' = expr (\x => (\y => OpB Add x y))

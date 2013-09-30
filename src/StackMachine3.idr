@@ -1,4 +1,5 @@
 module StackMachine3
+import Tip
 import Interp
 
 %default total
@@ -10,6 +11,9 @@ mutual
     SUB  :        Inst (S (S s)) (S s)
     MUL  :        Inst (S (S s)) (S s)
     DIV  :        Inst (S (S s)) (S s)
+    EQL  :        Inst (S (S s)) (S s)
+    LTH  :        Inst (S (S s)) (S s)
+    NAY  :        Inst (S s)     (S s)
     IF   : Prog s s' -> Prog s s' -> Inst (S s) s'
 
   data Prog : Nat -> Nat -> Type where
@@ -28,6 +32,18 @@ run (ADD    :: is) (v1 :: v2 :: vs) = run is ((v1 + v2) :: vs)
 run (SUB    :: is) (v1 :: v2 :: vs) = run is ((v2 - v1) :: vs)
 run (MUL    :: is) (v1 :: v2 :: vs) = run is ((v1 * v2) :: vs)
 run (DIV    :: is) (v1 :: v2 :: vs) = run is ((cast ((cast v2) / (cast v1))) :: vs)
+run (EQL    :: is) (v1 :: v2 :: vs) = let b = case (v1 == v2) of
+                                                   True  => 1
+                                                   False => 0
+                                              in run is (b :: vs)
+run (LTH    :: is) (v1 :: v2 :: vs) = let b = case (v1 < v2) of
+                                                   True  => 1
+                                                   False => 0
+                                              in run is (b :: vs)
+run (NAY    :: is)        (v :: vs) = let b = case v of
+                                                   0 => 1
+                                                   _ => 0
+                                              in run is (b :: vs)
 run ((IF TB FB) :: is)    (v :: vs) = let b = case v of
                                                    0 => FB
                                                    _ => TB
@@ -46,6 +62,9 @@ test3 = [PUSH 5]
 test6 : Prog Z (S Z)
 test6 = [PUSH 0, IF ([PUSH 1]) ([PUSH 2])]
 
+test7 : Prog Z (S Z)
+test7 = [PUSH 1, NAY]
+
 using (G: Vect n Tip)
   partial
   compile : Env G -> Expr G t -> Prog s (S s)
@@ -53,14 +72,17 @@ using (G: Vect n Tip)
   compile env (Boo b)         = case b of
                                      True => [PUSH 1]
                                      _    => [PUSH 0]
-  compile env (Ope Add v1 v2) = compile env v1 +++ compile env v2 +++ [ADD]
-  compile env (Ope Sub v1 v2) = compile env v1 +++ compile env v2 +++ [SUB]
-  compile env (Ope Mul v1 v2) = compile env v1 +++ compile env v2 +++ [MUL]
-  compile env (Ope Div v1 v2) = compile env v1 +++ compile env v2 +++ [DIV] 
+  compile env (OpB Add v1 v2) = compile env v1 +++ compile env v2 +++ [ADD]
+  compile env (OpB Sub v1 v2) = compile env v1 +++ compile env v2 +++ [SUB]
+  compile env (OpB Mul v1 v2) = compile env v1 +++ compile env v2 +++ [MUL]
+  compile env (OpB Div v1 v2) = compile env v1 +++ compile env v2 +++ [DIV] 
+  compile env (OpB Eql v1 v2) = compile env v1 +++ compile env v2 +++ [EQL]
+  compile env (OpB Lt  v1 v2) = compile env v1 +++ compile env v2 +++ [LTH]
+  compile env (OpU Nay v)     = compile env v  +++ [NAY] 
   compile env (If b tb fb)    = compile env b  +++ [IF (compile env tb) (compile env fb)] 
  
   test4 : Expr Nil TipInt
-  test4 = If (Boo False) (Ope Add (Val 2) (Val 3)) (Val 2)
+  test4 = If (OpU Nay (OpB Eql (Val 3) (Val 2))) (OpB Add (Val 2) (Val 3)) (Val 2)
 
   partial
   test5 : Prog 0 1
