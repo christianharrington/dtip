@@ -22,6 +22,7 @@ using (G: Vect n Tip)
   data Expr : Vect n Tip -> Tip -> Type where
     Var  : HasType i G t -> Expr G t
     Val  : (i : Int) -> Expr G TipInt
+    Boo  : (b : Bool) -> Expr G TipBool
     Lam  : Expr (t :: G) t' -> Expr G (TipFun t t')
     App  : Expr G (TipFun t t') -> Expr G t -> Expr G t'
     If   : Expr G TipBool -> Expr G t -> Expr G t -> Expr G t
@@ -39,6 +40,7 @@ using (G: Vect n Tip)
   interp : Env G -> Expr G t -> interpTip t
   interp env (Var k)       = lookup k env
   interp env (Val i)       = i
+  interp env (Boo b)       = b
   interp env (Lam e)       = \x => interp (x :: env) e
   interp env (App f a)     = interp env f (interp env a)
   interp env (If c t f)    = if interp env c then interp env t else interp env f
