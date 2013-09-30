@@ -4,7 +4,7 @@ import Decidable.Equality
 
 %default total
 
-data Tip = TipBool | TipInt | TipFun Tip Tip
+data Tip = TipBool | TipInt | TipPair Tip Tip | TipFun Tip Tip
 
 ---------- Properties of Tip ----------
 tipIntNotTipBool : (p: TipInt = TipBool) -> _|_
@@ -12,6 +12,15 @@ tipIntNotTipBool {p = refl} impossible -- impossible makes sure that the type ch
 
 tipIntNotTipFun : (p: TipInt = (TipFun t t')) -> _|_
 tipIntNotTipFun {p = refl} impossible
+
+tipIntNotTipPair : (p: TipInt = (TipPair t t')) -> _|_
+tipIntNotTipPair {p = refl} impossible
+
+tipBoolNotTipPair : (p: TipBool = (TipPair t t')) -> _|_
+tipBoolNotTipPair {p = refl} impossible
+
+tipFunNotTipPair : (p: (TipFun s s') = (TipPair t t')) -> _|_
+tipFunNotTipPair {p = refl} impossible
 
 tipBoolNotTipFun : (p: TipBool = (TipFun t t')) -> _|_
 tipBoolNotTipFun {p = refl} impossible
@@ -41,15 +50,28 @@ tipFunBothNeq : {s: Tip, s': Tip, t: Tip, t':Tip} -> (s = t -> _|_) -> (s' = t' 
 tipFunBothNeq p p' {ptf = refl} = ?tipFunBothNeqcase 
 
 instance DecEq Tip where
-  decEq TipInt        TipInt        = Yes refl
-  decEq TipBool       TipBool       = Yes refl
-  decEq TipInt        TipBool       = No tipIntNotTipBool
-  decEq TipBool       TipInt        = No $ negEqSym tipIntNotTipBool -- negEqSym : (a = b -> _|_) -> (b = a -> _|_)
-  decEq TipInt        (TipFun t t') = No tipIntNotTipFun
-  decEq (TipFun t t') TipInt        = No $ negEqSym tipIntNotTipFun
-  decEq TipBool       (TipFun t t') = No tipBoolNotTipFun
-  decEq (TipFun t t') TipBool       = No $ negEqSym tipBoolNotTipFun
-  decEq (TipFun s s') (TipFun t t') with (decEq s t)
+  decEq TipInt         TipInt         = Yes refl
+  decEq TipInt         TipBool        = No tipIntNotTipBool
+  decEq TipInt         (TipPair t t') = No tipIntNotTipPair
+  decEq TipInt         (TipFun t t')  = No tipIntNotTipFun
+  decEq TipBool        TipBool        = Yes refl
+  decEq TipBool        TipInt         = No $ negEqSym tipIntNotTipBool -- negEqSym : (a = b -> _|_) -> (b = a -> _|_)
+  decEq TipBool        (TipPair t t') = No tipBoolNotTipPair
+  decEq TipBool        (TipFun t t')  = No tipBoolNotTipFun
+  decEq (TipPair t t') TipInt         = No $ negEqSym tipIntNotTipPair
+  decEq (TipPair t t') TipBool        = No $ negEqSym tipBoolNotTipPair
+  decEq (TipPair s s') (TipPair t t') with (decEq s t)
+    decEq (TipPair s s') (TipPair s t') | Yes refl with (decEq s' t')
+      decEq (TipPair s s') (TipPair s s') | (Yes refl) | (Yes refl) = Yes refl
+      decEq (TipPair s s') (TipPair s t') | (Yes refl) | (No p) = No ?tipDecEqTipPairYesNocase
+    decEq (TipPair s s') (TipPair t t') | No p with (decEq s' t')
+      decEq (TipPair s s') (TipPair t s') | (No p) | (Yes refl) = No ?tipDecEqTipPairNoYescase
+      decEq (TipPair s s') (TipPair t t') | (No p) | (No p') = No ?tipDecEqTipPairNoNocase
+  decEq (TipPair t t') (TipFun t t')  = No $ negEqSym tipFunNotTipPair
+  decEq (TipFun t t')  TipInt         = No $ negEqSym tipIntNotTipFun
+  decEq (TipFun t t')  TipBool        = No $ negEqSym tipBoolNotTipFun
+  decEq (TipFun t t')  (TipPair s s') = No tipFunNotTipPair
+  decEq (TipFun s s')  (TipFun t t')  with (decEq s t)
     decEq (TipFun s s') (TipFun s t') | Yes refl with (decEq s' t')
       decEq (TipFun s s') (TipFun s s') | (Yes refl) | (Yes refl) = Yes refl
       decEq (TipFun s s') (TipFun s t') | (Yes refl) | (No p) = No ?tipDecEqTipFunYesNocase
