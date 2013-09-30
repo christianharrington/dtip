@@ -13,15 +13,19 @@ using (G: Vect n Tip)
     stop : HasType fZ (t :: G) t
     pop  : HasType k G t -> HasType (fS k) (u :: G) t 
 
+  data BinOp: Tip -> Tip -> Tip -> Type where
+    Add : BinOp TipInt TipInt TipInt
+    Sub : BinOp TipInt TipInt TipInt
+    Mul : BinOp TipInt TipInt TipInt
+    Div : BinOp TipInt TipInt TipInt
+
   data Expr : Vect n Tip -> Tip -> Type where
     Var  : HasType i G t -> Expr G t
     Val  : (i : Int) -> Expr G TipInt
     Lam  : Expr (t :: G) t' -> Expr G (TipFun t t')
     App  : Expr G (TipFun t t') -> Expr G t -> Expr G t'
     If   : Expr G TipBool -> Expr G t -> Expr G t -> Expr G t
-    Plus : Expr G TipInt -> Expr G TipInt -> Expr G TipInt
-    Ope  : (interpTip a -> interpTip b -> interpTip c) -> Expr G a -> Expr G b -> Expr G c
-  
+    Ope  : BinOp a b c -> Expr G a -> Expr G b -> Expr G c      
 
   data Env : Vect n Tip -> Type where
     Nil  : Env Nil
@@ -31,14 +35,17 @@ using (G: Vect n Tip)
   lookup stop    (x :: xs) = x
   lookup (pop k) (x :: xs) = lookup k xs
 
+  partial -- We think it is total, but the totality checker disagrees
   interp : Env G -> Expr G t -> interpTip t
-  interp env (Var k)     = lookup k env
-  interp env (Val i)     = i
-  interp env (Lam e)     = \x => interp (x :: env) e
-  interp env (App f a)   = interp env f (interp env a)
-  interp env (If c t f)  = if interp env c then interp env t else interp env f
-  interp env (Plus a b)  = (interp env a) + (interp env b)
-  interp env (Ope f a b) = f (interp env a) (interp env b)
+  interp env (Var k)       = lookup k env
+  interp env (Val i)       = i
+  interp env (Lam e)       = \x => interp (x :: env) e
+  interp env (App f a)     = interp env f (interp env a)
+  interp env (If c t f)    = if interp env c then interp env t else interp env f
+  interp env (Ope Add a b) = (interp env a) + (interp env b)
+  interp env (Ope Sub a b) = (interp env a) - (interp env b)
+  interp env (Ope Mul a b) = (interp env a) * (interp env b)
+  interp env (Ope Div a b) = (cast ((cast (interp env a)) / (cast (interp env b))))
 
   dsl expr
     lambda      = Lam
@@ -54,4 +61,4 @@ using (G: Vect n Tip)
   lam = expr (\x => x)
 
   add' : Expr Nil (TipFun TipInt (TipFun TipInt TipInt))
-  add' = expr (\x => (\y => Ope (+) x y))
+  add' = expr (\x => (\y => Ope Add x y))

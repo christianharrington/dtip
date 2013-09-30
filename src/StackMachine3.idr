@@ -40,10 +40,11 @@ using (G: Vect n Tip)
   partial
   compile : Env G -> Expr G t -> Prog s (S s)
   compile env (Val i)         = [PUSH i]
-  compile env (Ope (+) v1 v2) = compile env v1 +++ compile env v2 +++ [ADD]
+  compile env (Ope Add v1 v2) = compile env v1 +++ compile env v2 +++ [ADD]
+  compile env (Ope Sub v1 v2) = compile env v1 +++ compile env v2 +++ [SUB]
  
   test4 : Expr Nil TipInt
-  test4 = Ope (+) (Val 3) (Val 4)
+  test4 = Ope Add (Val 3) (Val 4)
 
   partial
   test5 : Prog 0 1
