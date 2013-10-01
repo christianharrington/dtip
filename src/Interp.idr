@@ -46,6 +46,31 @@ using (G: Vect n Tip)
   lookup stop    (x :: xs) = x
   lookup (pop k) (x :: xs) = lookup k xs
 
+  partial
+  optimize : Expr G t -> Expr G t
+  -- These are really slow for some reason!
+  --optimize (OpB Add (Val x) (Val y)) = Val (x + y)
+  --optimize (OpB Add a (Val 0))       = optimize a
+  --optimize (OpB Add (Val 0) a)       = optimize a
+  --optimize (OpB Sub (Val x) (Val y)) = Val (x - y)
+  --optimize (OpB Sub a (Val 0))       = optimize a
+  --optimize (OpB Mul (Val x) (Val y)) = Val (x * y)
+  --optimize (OpB Mul a (Val 1))       = optimize a
+  --optimize (OpB Mul (Val 1) a)       = optimize a
+  --optimize (OpB Div (Val x) (Val y)) = Val (cast ((cast x) / (cast y)))
+  --optimize (OpB Div a (Val 1))       = optimize a
+  --optimize (OpB o   a       b)       = OpB o (optimize a) (optimize b)
+  optimize (Lam e)                   = Lam (optimize e)
+  optimize (OpU Nay (OpU Nay a))     = optimize a
+  optimize (OpU o   a)               = OpU o (optimize a)
+  optimize (If (Boo True)  b1 b2)    = optimize b1
+  optimize (If (Boo False) b1 b2)    = optimize b2
+  optimize (If  c   b1     b2)       = If (optimize c) (optimize b1) (optimize b2)
+  optimize (Fst p)                   = Fst (optimize p)
+  optimize (Snd p)                   = Snd (optimize p)
+  optimize (Pair    fst    snd)      = Pair (optimize fst) (optimize snd)
+  optimize a                         = a
+
   partial -- We think it is total, but the totality checker disagrees
   interp : Env G -> Expr G t -> interpTip t
   interp env (Var k)       = lookup k env
