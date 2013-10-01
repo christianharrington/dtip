@@ -14,6 +14,9 @@ mutual
    lVar  : Nat -> InfTerm
    lVal  : Int -> InfTerm
    lIf   : CheckTerm -> InfTerm -> CheckTerm -> InfTerm
+   lPair : InfTerm -> InfTerm -> InfTerm
+   lFst  : InfTerm -> InfTerm
+   lSnd  : InfTerm -> InfTerm
    lOpU  : UnOp -> InfTerm
    lOpB  : BinOp -> InfTerm
 
@@ -25,8 +28,6 @@ mutual
 
  data UnOp : Type where
    NNot : CheckTerm -> UnOp
-
-data 
   
 makeHasType : (i: Fin n) -> (G: Vect n Tip) -> Maybe (t: Tip ** HasType i G t)
 makeHasType fZ     (t :: G) = Just (t ** stop)
@@ -70,9 +71,16 @@ mutual
   infer (lIf c t f) G         = do c         <- check c G TipBool
                                    (s ** t') <- infer t G
                                    f'        <- check f G s
-                                   return $ (_ ** If c t' f')
+                                   return (_ ** If c t' f')
+  infer (lPair a b) G         = do (_ ** a') <- infer a G
+                                   (_ ** b') <- infer b G
+                                   return (_ ** Pair a' b')
+  infer (lFst p) G            = do (TipPair a b ** p') <- infer p G
+                                   return (_ ** Fst p')
+  infer (lSnd p) G            = do (TipPair a b ** p') <- infer p G
+                                   return (_ ** Snd p')
   infer (lOpU (NNot a)) G     = do x <- check a G TipBool
-                                   return $ (_ ** OpU Nay x)       
+                                   return (_ ** OpU Nay x)       
   infer (lOpB (Plus a b)) G   = do leftOp  <- check a G TipInt
                                    rightOp <- check b G TipInt
                                    return (_ ** OpB Add leftOp rightOp)

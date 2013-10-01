@@ -4,9 +4,10 @@ import Tip
 %default total
 
 interpTip : Tip -> Type
-interpTip TipInt  = Int
-interpTip TipBool = Bool
-interpTip (TipFun T T') = interpTip T -> interpTip T' 
+interpTip TipInt         = Int
+interpTip TipBool        = Bool
+interpTip (TipPair T T') = (interpTip T, interpTip T')
+interpTip (TipFun T T')  = interpTip T -> interpTip T' 
 
 using (G: Vect n Tip)
   data HasType : (i : Fin n) -> Vect n Tip -> Tip -> Type where
@@ -31,8 +32,11 @@ using (G: Vect n Tip)
     Lam  : Expr (t :: G) t' -> Expr G (TipFun t t')
     App  : Expr G (TipFun t t') -> Expr G t -> Expr G t'
     If   : Expr G TipBool -> Expr G t -> Expr G t -> Expr G t
+    Pair : Expr G a -> Expr G b -> Expr G (TipPair a b)
+    Fst  : Expr G (TipPair a b) -> Expr G a
+    Snd  : Expr G (TipPair a b) -> Expr G b
     OpU  : UnOp a b -> Expr G a -> Expr G b 
-    OpB  : BinOp a b c -> Expr G a -> Expr G b -> Expr G c      
+    OpB  : BinOp a b c -> Expr G a -> Expr G b -> Expr G c
 
   data Env : Vect n Tip -> Type where
     Nil  : Env Nil
@@ -50,6 +54,9 @@ using (G: Vect n Tip)
   interp env (Lam e)       = \x => interp (x :: env) e
   interp env (App f a)     = interp env f (interp env a)
   interp env (If c t f)    = if interp env c then interp env t else interp env f
+  interp env (Pair a b)    = (interp env a, interp env b)
+  interp env (Fst p)       = fst (interp env p)
+  interp env (Snd p)       = snd (interp env p)
   interp env (OpB Add a b) = (interp env a) + (interp env b)
   interp env (OpB Sub a b) = (interp env a) - (interp env b)
   interp env (OpB Mul a b) = (interp env a) * (interp env b)

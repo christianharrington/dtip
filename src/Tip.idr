@@ -25,6 +25,8 @@ tipFunNotTipPair {p = refl} impossible
 tipBoolNotTipFun : (p: TipBool = (TipFun t t')) -> _|_
 tipBoolNotTipFun {p = refl} impossible
 
+
+----- Properties of TipFun -----
 {-
      ¬ (s = t)      (s' = s')
   -----------------------------
@@ -47,7 +49,20 @@ tipFunResultNeq {ps = refl} p {ptf = refl} = ?tipFunResultNeqcase
   ¬ (TipFun s s' = TipFun t t')
 -}
 tipFunBothNeq : {s: Tip, s': Tip, t: Tip, t':Tip} -> (s = t -> _|_) -> (s' = t' -> _|_) -> ((ptf: (TipFun s s') = (TipFun t t')) -> _|_)
-tipFunBothNeq p p' {ptf = refl} = ?tipFunBothNeqcase 
+tipFunBothNeq p p' {ptf = refl} = ?tipFunBothNeqcase
+
+
+----- Properties of TipPair -----
+tipPairFstNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (s = t -> _|_) -> (pst: s' = s') -> ((ptp: (TipPair s s') = (TipPair t s')) -> _|_)
+tipPairFstNeq p {pst = refl} {ptp = refl} = ?tipPairFstNeqcase
+
+tipPairSndNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (pst: s = s) -> (s' = t' -> _|_) -> ((ptp: (TipPair s s') = (TipPair s t')) -> _|_)
+tipPairSndNeq {pst = refl} p {ptp = refl} = ?tipPairSndNeqcase
+
+tipPairBothNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (s = t -> _|_) -> (s' = t' -> _|_) -> ((ptp: (TipPair s s') = (TipPair t t')) -> _|_)
+tipPairBothNeq p p' {ptp = refl} = ?tipPairBothNeqcase
+
+
 
 instance DecEq Tip where
   decEq TipInt         TipInt         = Yes refl
@@ -66,7 +81,7 @@ instance DecEq Tip where
       decEq (TipPair s s') (TipPair s t') | (Yes refl) | (No p) = No ?tipDecEqTipPairYesNocase
     decEq (TipPair s s') (TipPair t t') | No p with (decEq s' t')
       decEq (TipPair s s') (TipPair t s') | (No p) | (Yes refl) = No ?tipDecEqTipPairNoYescase
-      decEq (TipPair s s') (TipPair t t') | (No p) | (No p') = No ?tipDecEqTipPairNoNocase
+      decEq (TipPair s s') (TipPair t t') | (No p) | (No p') = No $ tipPairBothNeq p p'
   decEq (TipPair t t') (TipFun t t')  = No $ negEqSym tipFunNotTipPair
   decEq (TipFun t t')  TipInt         = No $ negEqSym tipIntNotTipFun
   decEq (TipFun t t')  TipBool        = No $ negEqSym tipBoolNotTipFun
@@ -80,6 +95,42 @@ instance DecEq Tip where
       decEq (TipFun s s') (TipFun t t') | (No p) | (No p') = No $ tipFunBothNeq p p' --?tipDecEqTipFunNoNocase
 
 ---------- Proofs ----------
+
+Tip.tipDecEqTipPairNoYescase = proof {
+  intros;
+  refine tipPairFstNeq;
+  trivial;
+  trivial;
+  trivial;
+  trivial;
+}
+
+Tip.tipDecEqTipPairYesNocase = proof {
+  intros;
+  refine tipPairSndNeq;
+  refine refl;
+  trivial;
+  trivial;
+  trivial;
+}
+
+Tip.tipPairSndNeqcase = proof {
+  intros;
+  refine p;
+  refine refl;
+}
+
+Tip.tipPairFstNeqcase = proof {
+  intros;
+  refine p;
+  refine refl;
+}
+
+Tip.tipPairBothNeqcase = proof {
+  intros;
+  refine p';
+  refine refl;
+}
 
 Tip.tipDecEqTipFunNoYescase = proof {
   intros;
