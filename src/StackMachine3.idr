@@ -67,23 +67,27 @@ test7 = [PUSH 1, NAY]
 
 using (G: Vect n Tip)
   partial
-  compile : Env G -> Expr G t -> Prog s (S s)
-  compile env (Val i)         = [PUSH i]
-  compile env (Boo b)         = case b of
-                                     True => [PUSH 1]
-                                     _    => [PUSH 0]
-  compile env (OpB Add v1 v2) = compile env v1 +++ compile env v2 +++ [ADD]
-  compile env (OpB Sub v1 v2) = compile env v1 +++ compile env v2 +++ [SUB]
-  compile env (OpB Mul v1 v2) = compile env v1 +++ compile env v2 +++ [MUL]
-  compile env (OpB Div v1 v2) = compile env v1 +++ compile env v2 +++ [DIV] 
-  compile env (OpB Eql v1 v2) = compile env v1 +++ compile env v2 +++ [EQL]
-  compile env (OpB Lt  v1 v2) = compile env v1 +++ compile env v2 +++ [LTH]
-  compile env (OpU Nay v)     = compile env v  +++ [NAY] 
-  compile env (If b tb fb)    = compile env b  +++ [IF (compile env tb) (compile env fb)] 
+  compile : Expr G t -> Vect n (Prog s' (S s')) -> Prog s (S s)
+  compile (Val i)         sf    = [PUSH i]
+  compile (Boo b)         sf    = case b of
+                                       True => [PUSH 1]
+                                       _    => [PUSH 0]
+  compile (OpB Add v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [ADD]
+  compile (OpB Sub v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [SUB]
+  compile (OpB Mul v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [MUL]
+  compile (OpB Div v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [DIV]
+  compile (OpB Eql v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [EQL]
+  compile (OpB Lt  v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [LTH]
+  compile (OpU Nay v)        sf = compile v  sf +++ [NAY] 
+  compile (If b tb fb)       sf = compile b  sf +++ [IF (compile tb sf) (compile fb sf)]
+  compile (App (Lam b) e)    sf = compile b ((compile e sf) :: sf)
+  --compile (Var stop)  (e :: sf) = e
+  --compile (Var pop k) (e :: sf) = compile (Var k) sf
  
-  test4 : Expr Nil TipInt
-  test4 = If (OpU Nay (OpB Eql (Val 3) (Val 2))) (OpB Add (Val 2) (Val 3)) (Val 2)
+ 
+  --test4 : Expr Nil TipInt
+  --test4 = If (OpU Nay (OpB Eql (Val 3) (Val 2))) (OpB Add (Val 2) (Val 3)) (Val 2)
 
-  partial
-  test5 : Prog 0 1
-  test5 = compile Nil test4
+  --partial
+  --test5 : Prog 0 1
+  --test5 = compile Nil test4
