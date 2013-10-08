@@ -26,6 +26,11 @@ mutual
 infixr 10 +++
 
 partial -- We think it's total
+{-
+  Consider:
+    If we want to prove that the well-typed interpreter and the run function both evaluate the same program to the same value,
+    we have to find out how these two can be equated
+-}
 run : Prog s s' -> Vect s Int -> Vect s' Int
 run (PUSH v :: is) vs               = run is (v :: vs)
 run (ADD    :: is) (v1 :: v2 :: vs) = run is ((v1 + v2) :: vs)

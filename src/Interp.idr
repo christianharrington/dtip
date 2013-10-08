@@ -4,9 +4,11 @@ import Tip
 %default total
 
 interpTip : Tip -> Type
-interpTip TipInt         = Int
+interpTip TipUnit        = ()
 interpTip TipBool        = Bool
-interpTip (TipPair T T') = (interpTip T, interpTip T')
+interpTip TipInt         = Int
+interpTip (TipProd T T') = (interpTip T, interpTip T')
+interpTip (TipSum T T')  = Either (interpTip T) (interpTip T')
 interpTip (TipFun T T')  = interpTip T -> interpTip T' 
 
 using (G: Vect n Tip)
@@ -26,15 +28,19 @@ using (G: Vect n Tip)
     Nay : UnOp TipBool TipBool
 
   data Expr : Vect n Tip -> Tip -> Type where
+    U    : Expr G TipUnit
     Var  : HasType i G t -> Expr G t
     Val  : (i : Int) -> Expr G TipInt
     Boo  : (b : Bool) -> Expr G TipBool
     Lam  : Expr (t :: G) t' -> Expr G (TipFun t t')
     App  : Expr G (TipFun t t') -> Expr G t -> Expr G t'
     If   : Expr G TipBool -> Expr G t -> Expr G t -> Expr G t
-    Pair : Expr G a -> Expr G b -> Expr G (TipPair a b)
-    Fst  : Expr G (TipPair a b) -> Expr G a
-    Snd  : Expr G (TipPair a b) -> Expr G b
+    Pair : Expr G a -> Expr G b -> Expr G (TipProd a b)
+    Fst  : Expr G (TipProd a b) -> Expr G a
+    Snd  : Expr G (TipProd a b) -> Expr G b
+    InL  : Expr G a -> (b: Tip) -> Expr G (TipSum a b) -- Inject into left branch
+    InR  : Expr G b -> (a: Tip) -> Expr G (TipSum a b) -- Inject into right branch
+    Case : Expr G (TipSum a b) -> Expr (a :: G) c -> Expr (b :: G) c -> Expr G c -- Destruct sum type
     OpU  : UnOp a b -> Expr G a -> Expr G b 
     OpB  : BinOp a b c -> Expr G a -> Expr G b -> Expr G c
 
@@ -82,6 +88,11 @@ using (G: Vect n Tip)
   interp env (Pair a b)    = (interp env a, interp env b)
   interp env (Fst p)       = fst (interp env p)
   interp env (Snd p)       = snd (interp env p)
+  interp env (InL a t)     = Left (interp env a)
+  interp env (InR b t)     = Right (interp env b)
+  interp env (Case o a b)  = case (interp env o) of
+                                  Left l  => interp (l :: env) a
+                                  Right r => interp (r :: env) b
   interp env (OpB Add a b) = (interp env a) + (interp env b)
   interp env (OpB Sub a b) = (interp env a) - (interp env b)
   interp env (OpB Mul a b) = (interp env a) * (interp env b)

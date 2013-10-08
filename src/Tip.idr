@@ -4,27 +4,83 @@ import Decidable.Equality
 
 %default total
 
-data Tip = TipBool | TipInt | TipPair Tip Tip | TipFun Tip Tip
+data Tip = TipUnit | TipBool | TipInt | TipProd Tip Tip | TipSum Tip Tip | TipFun Tip Tip
 
 ---------- Properties of Tip ----------
-tipIntNotTipBool : (p: TipInt = TipBool) -> _|_
-tipIntNotTipBool {p = refl} impossible -- impossible makes sure that the type checker will never accept such a claim
 
-tipIntNotTipFun : (p: TipInt = (TipFun t t')) -> _|_
-tipIntNotTipFun {p = refl} impossible
+-- TipUnit
+tipUnitNotTipInt : (p: TipUnit = TipInt) -> _|_
+tipUnitNotTipInt {p = refl} impossible -- impossible makes sure that the type checker will never accept such a claim
 
-tipIntNotTipPair : (p: TipInt = (TipPair t t')) -> _|_
-tipIntNotTipPair {p = refl} impossible
+tipUnitNotTipBool : (p: TipUnit = TipBool) -> _|_
+tipUnitNotTipBool {p = refl} impossible
 
-tipBoolNotTipPair : (p: TipBool = (TipPair t t')) -> _|_
-tipBoolNotTipPair {p = refl} impossible
+tipUnitNotTipProd : (p: TipUnit = (TipProd t t')) -> _|_
+tipUnitNotTipProd {p = refl} impossible
 
-tipFunNotTipPair : (p: (TipFun s s') = (TipPair t t')) -> _|_
-tipFunNotTipPair {p = refl} impossible
+tipUnitNotTipSum : (p: TipUnit = (TipSum t t')) -> _|_
+tipUnitNotTipSum {p = refl} impossible
+
+tipUnitNotTipFun : (p: TipUnit = (TipFun t t')) -> _|_
+tipUnitNotTipFun {p = refl} impossible
+
+-- TipBool
+tipBoolNotTipInt : (p: TipBool = TipInt) -> _|_
+tipBoolNotTipInt {p = refl} impossible
+
+tipBoolNotTipProd : (p: TipBool = (TipProd t t')) -> _|_
+tipBoolNotTipProd {p = refl} impossible
+
+tipBoolNotTipSum : (p: TipBool = (TipSum t t')) -> _|_
+tipBoolNotTipSum {p = refl} impossible
 
 tipBoolNotTipFun : (p: TipBool = (TipFun t t')) -> _|_
 tipBoolNotTipFun {p = refl} impossible
 
+-- TipInt
+tipIntNotTipProd : (p: TipInt = (TipProd t t')) -> _|_
+tipIntNotTipProd {p = refl} impossible
+
+tipIntNotTipSum : (p: TipInt = (TipSum t t')) -> _|_
+tipIntNotTipSum {p = refl} impossible
+
+tipIntNotTipFun : (p: TipInt = (TipFun t t')) -> _|_
+tipIntNotTipFun {p = refl} impossible
+
+-- TipProd
+tipProdNotTipSum : (p: (TipProd s s') = (TipSum t t')) -> _|_
+tipProdNotTipSum {p = refl} impossible
+
+tipProdNotTipFun : (p: (TipProd s s') = (TipFun t t')) -> _|_
+tipProdNotTipFun {p = refl} impossible
+
+-- TipSum
+tipSumNotTipFun : (p: (TipSum s s') = (TipFun t t')) -> _|_
+tipSumNotTipFun {p = refl} impossible
+
+-- TipFun
+
+
+----- Properties of TipProd -----
+tipProdFstNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (s = t -> _|_) -> (pst: s' = s') -> ((ptp: (TipProd s s') = (TipProd t s')) -> _|_)
+tipProdFstNeq p {pst = refl} {ptp = refl} = ?tipProdFstNeqcase
+
+tipProdSndNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (pst: s = s) -> (s' = t' -> _|_) -> ((ptp: (TipProd s s') = (TipProd s t')) -> _|_)
+tipProdSndNeq {pst = refl} p {ptp = refl} = ?tipProdSndNeqcase
+
+tipProdBothNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (s = t -> _|_) -> (s' = t' -> _|_) -> ((ptp: (TipProd s s') = (TipProd t t')) -> _|_)
+tipProdBothNeq p p' {ptp = refl} = ?tipProdBothNeqcase
+
+
+----- Properties of TipSum -----
+tipSumLeftNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (s = t -> _|_) -> (pst: s' = s') -> ((pts: (TipSum s s') = (TipSum t s')) -> _|_)
+tipSumLeftNeq p {pst = refl} {pts = refl} = ?tipSumLeftNeqcase
+
+tipSumRightNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (pst: s = s) -> (s' = t' -> _|_) -> ((pts: (TipSum s s') = (TipSum s t')) -> _|_)
+tipSumRightNeq {pst = refl} p {pts = refl} = ?tipSumRightNeqcase
+
+tipSumBothNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (s = t -> _|_) -> (s' = t' -> _|_) -> ((pts: (TipSum s s') = (TipSum t t')) -> _|_)
+tipSumBothNeq p p' {pts = refl} = ?tipSumBothNeqcase
 
 ----- Properties of TipFun -----
 {-
@@ -52,40 +108,54 @@ tipFunBothNeq : {s: Tip, s': Tip, t: Tip, t':Tip} -> (s = t -> _|_) -> (s' = t' 
 tipFunBothNeq p p' {ptf = refl} = ?tipFunBothNeqcase
 
 
------ Properties of TipPair -----
-tipPairFstNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (s = t -> _|_) -> (pst: s' = s') -> ((ptp: (TipPair s s') = (TipPair t s')) -> _|_)
-tipPairFstNeq p {pst = refl} {ptp = refl} = ?tipPairFstNeqcase
-
-tipPairSndNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (pst: s = s) -> (s' = t' -> _|_) -> ((ptp: (TipPair s s') = (TipPair s t')) -> _|_)
-tipPairSndNeq {pst = refl} p {ptp = refl} = ?tipPairSndNeqcase
-
-tipPairBothNeq : {s: Tip, s': Tip, t: Tip, t': Tip} -> (s = t -> _|_) -> (s' = t' -> _|_) -> ((ptp: (TipPair s s') = (TipPair t t')) -> _|_)
-tipPairBothNeq p p' {ptp = refl} = ?tipPairBothNeqcase
-
-
-
 instance DecEq Tip where
-  decEq TipInt         TipInt         = Yes refl
-  decEq TipInt         TipBool        = No tipIntNotTipBool
-  decEq TipInt         (TipPair t t') = No tipIntNotTipPair
-  decEq TipInt         (TipFun t t')  = No tipIntNotTipFun
+  decEq TipUnit        TipUnit        = Yes refl
+  decEq TipUnit        TipBool        = No tipUnitNotTipBool
+  decEq TipUnit        TipInt         = No tipUnitNotTipInt
+  decEq TipUnit        (TipProd t t') = No tipUnitNotTipProd
+  decEq TipUnit        (TipSum t t')  = No tipUnitNotTipSum
+  decEq TipUnit        (TipFun t t')  = No tipUnitNotTipFun
+  
   decEq TipBool        TipBool        = Yes refl
-  decEq TipBool        TipInt         = No $ negEqSym tipIntNotTipBool -- negEqSym : (a = b -> _|_) -> (b = a -> _|_)
-  decEq TipBool        (TipPair t t') = No tipBoolNotTipPair
+  decEq TipBool        TipUnit        = No $ negEqSym tipUnitNotTipBool -- negEqSym : (a = b -> _|_) -> (b = a -> _|_)
+  decEq TipBool        TipInt         = No tipBoolNotTipInt
+  decEq TipBool        (TipProd t t') = No tipBoolNotTipProd
+  decEq TipBool        (TipSum t t')  = No tipBoolNotTipSum
   decEq TipBool        (TipFun t t')  = No tipBoolNotTipFun
-  decEq (TipPair t t') TipInt         = No $ negEqSym tipIntNotTipPair
-  decEq (TipPair t t') TipBool        = No $ negEqSym tipBoolNotTipPair
-  decEq (TipPair s s') (TipPair t t') with (decEq s t)
-    decEq (TipPair s s') (TipPair s t') | Yes refl with (decEq s' t')
-      decEq (TipPair s s') (TipPair s s') | (Yes refl) | (Yes refl) = Yes refl
-      decEq (TipPair s s') (TipPair s t') | (Yes refl) | (No p) = No ?tipDecEqTipPairYesNocase
-    decEq (TipPair s s') (TipPair t t') | No p with (decEq s' t')
-      decEq (TipPair s s') (TipPair t s') | (No p) | (Yes refl) = No ?tipDecEqTipPairNoYescase
-      decEq (TipPair s s') (TipPair t t') | (No p) | (No p') = No $ tipPairBothNeq p p'
-  decEq (TipPair t t') (TipFun t t')  = No $ negEqSym tipFunNotTipPair
-  decEq (TipFun t t')  TipInt         = No $ negEqSym tipIntNotTipFun
-  decEq (TipFun t t')  TipBool        = No $ negEqSym tipBoolNotTipFun
-  decEq (TipFun t t')  (TipPair s s') = No tipFunNotTipPair
+  
+  decEq TipInt         TipInt         = Yes refl
+  decEq TipInt         TipUnit        = No $ negEqSym tipUnitNotTipInt
+  decEq TipInt         TipBool        = No $ negEqSym tipBoolNotTipInt
+  decEq TipInt         (TipProd t t') = No tipIntNotTipProd
+  decEq TipInt         (TipSum t t')  = No tipIntNotTipSum
+  decEq TipInt         (TipFun t t')  = No tipIntNotTipFun
+  
+  decEq (TipProd s s') (TipProd t t') with (decEq s t)
+    decEq (TipProd s s') (TipProd s t') | Yes refl with (decEq s' t')
+      decEq (TipProd s s') (TipProd s s') | (Yes refl) | (Yes refl) = Yes refl
+      decEq (TipProd s s') (TipProd s t') | (Yes refl) | (No p) = No ?tipDecEqTipProdYesNocase
+    decEq (TipProd s s') (TipProd t t') | No p with (decEq s' t')
+      decEq (TipProd s s') (TipProd t s') | (No p) | (Yes refl) = No ?tipDecEqTipProdNoYescase
+      decEq (TipProd s s') (TipProd t t') | (No p) | (No p') = No $ tipProdBothNeq p p'
+  decEq (TipProd t t') TipUnit        = No $ negEqSym tipUnitNotTipProd
+  decEq (TipProd t t') TipBool        = No $ negEqSym tipBoolNotTipProd
+  decEq (TipProd t t') TipInt         = No $ negEqSym tipIntNotTipProd
+  decEq (TipProd s s') (TipSum t t')  = No tipProdNotTipSum
+  decEq (TipProd s s') (TipFun t t')  = No tipProdNotTipFun
+
+  decEq (TipSum s s')  (TipSum t t')  with (decEq s t)
+    decEq (TipSum s s') (TipSum s t') | Yes refl with (decEq s' t')
+      decEq (TipSum s s') (TipSum s s') | (Yes refl) | (Yes refl) = Yes refl
+      decEq (TipSum s s') (TipSum s t') | (Yes refl) | (No p) = No ?tipDecEqTipSumYesNocase
+    decEq (TipSum s s') (TipSum t t') | No p with (decEq s' t')
+      decEq (TipSum s s') (TipSum t s') | (No p) | (Yes refl) = No ?tipDecEqTipSumNoYescase
+      decEq (TipSum s s') (TipSum t t') | (No p) | (No p') = No $ tipSumBothNeq p p' 
+  decEq (TipSum s s')  (TipFun t t')  = No tipSumNotTipFun
+  decEq (TipSum t t')  TipUnit        = No $ negEqSym tipUnitNotTipSum
+  decEq (TipSum t t')  TipBool        = No $ negEqSym tipBoolNotTipSum
+  decEq (TipSum t t')  TipInt         = No $ negEqSym tipIntNotTipSum
+  decEq (TipSum s s')  (TipProd t t') = No $ negEqSym tipProdNotTipSum
+
   decEq (TipFun s s')  (TipFun t t')  with (decEq s t)
     decEq (TipFun s s') (TipFun s t') | Yes refl with (decEq s' t')
       decEq (TipFun s s') (TipFun s s') | (Yes refl) | (Yes refl) = Yes refl
@@ -93,40 +163,81 @@ instance DecEq Tip where
     decEq (TipFun s s') (TipFun t t') | No p with (decEq s' t')
       decEq (TipFun s s') (TipFun t s') | (No p) | (Yes refl) = No $ ?tipDecEqTipFunNoYescase
       decEq (TipFun s s') (TipFun t t') | (No p) | (No p') = No $ tipFunBothNeq p p' --?tipDecEqTipFunNoNocase
+  decEq (TipFun t t')  TipUnit        = No $ negEqSym tipUnitNotTipFun
+  decEq (TipFun t t')  TipInt         = No $ negEqSym tipIntNotTipFun
+  decEq (TipFun t t')  TipBool        = No $ negEqSym tipBoolNotTipFun
+  decEq (TipFun s s')  (TipProd s s') = No $ negEqSym tipProdNotTipFun
+  decEq (TipFun s s')  (TipSum s s')  = No $ negEqSym tipSumNotTipFun
 
 ---------- Proofs ----------
 
-Tip.tipDecEqTipPairNoYescase = proof {
+Tip.tipDecEqTipSumYesNocase = proof {
   intros;
-  refine tipPairFstNeq;
-  trivial;
-  trivial;
-  trivial;
-  trivial;
-}
-
-Tip.tipDecEqTipPairYesNocase = proof {
-  intros;
-  refine tipPairSndNeq;
+  refine tipSumRightNeq;
   refine refl;
   trivial;
   trivial;
   trivial;
 }
 
-Tip.tipPairSndNeqcase = proof {
+Tip.tipDecEqTipSumNoYescase = proof {
+  intros;
+  refine tipSumLeftNeq;
+  trivial;
+  refine refl;
+  trivial;
+  trivial;
+}
+
+Tip.tipSumBothNeqcase = proof {
   intros;
   refine p;
   refine refl;
 }
 
-Tip.tipPairFstNeqcase = proof {
+Tip.tipSumRightNeqcase = proof {
   intros;
   refine p;
   refine refl;
 }
 
-Tip.tipPairBothNeqcase = proof {
+Tip.tipSumLeftNeqcase = proof {
+  intros;
+  refine p;
+  refine refl;
+}
+
+Tip.tipDecEqTipProdNoYescase = proof {
+  intros;
+  refine tipProdFstNeq;
+  trivial;
+  trivial;
+  trivial;
+  trivial;
+}
+
+Tip.tipDecEqTipProdYesNocase = proof {
+  intros;
+  refine tipProdSndNeq;
+  refine refl;
+  trivial;
+  trivial;
+  trivial;
+}
+
+Tip.tipProdSndNeqcase = proof {
+  intros;
+  refine p;
+  refine refl;
+}
+
+Tip.tipProdFstNeqcase = proof {
+  intros;
+  refine p;
+  refine refl;
+}
+
+Tip.tipProdBothNeqcase = proof {
   intros;
   refine p';
   refine refl;
