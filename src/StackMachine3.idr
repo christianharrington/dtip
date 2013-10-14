@@ -14,7 +14,7 @@ mutual
     EQL  :        Inst (S (S s)) (S s)
     LTH  :        Inst (S (S s)) (S s)
     NAY  :        Inst (S s)     (S s)
-    IF   : Prog s s' -> Prog s s' -> Inst (S s) s'
+    --IF   : Prog s s' -> Prog s s' -> Inst (S s) s'
 
   data Prog : Nat -> Nat -> Type where
     Nil  : Prog s s
@@ -49,46 +49,47 @@ run (NAY    :: is)        (v :: vs) = let b = case v of
                                                    0 => 1
                                                    _ => 0
                                               in run is (b :: vs)
-run ((IF TB FB) :: is)    (v :: vs) = let b = case v of
+{-run ((IF TB FB) :: is)    (v :: vs) = let b = case v of
                                                    0 => FB
                                                    _ => TB
-                                              in run (b +++ is) vs
+                                              in run (b +++ is) vs-}
 run []             vs                 = vs
 
-test : Prog (S s) (S s)
-test = [PUSH 3] +++ [ADD]
-
-test2 : Prog 2 1
-test2 = [ADD]
-
-test3 : Prog s (S s)
-test3 = [PUSH 5]
-
-test6 : Prog Z (S Z)
-test6 = [PUSH 0, IF ([PUSH 1]) ([PUSH 2])]
-
-test7 : Prog Z (S Z)
-test7 = [PUSH 1, NAY]
-
 using (G: Vect n Tip)
-  partial
+  weakenInst : Inst n m -> Inst (S n) (S m)
+  weakenInst (PUSH i) = PUSH i 
+  weakenInst ADD  = ADD  
+  weakenInst SUB  = SUB  
+  weakenInst MUL  = MUL  
+  weakenInst DIV  = DIV  
+  weakenInst EQL  = EQL  
+  weakenInst LTH  = LTH  
+  weakenInst NAY  = NAY  
+
+  weaken : Prog n m -> Prog (S n) (S m)
+  weaken Nil = Nil
+  weaken (instr :: p) = weakenInst instr :: weaken p
+
+  partial -- Should be total when finished
   compile : Expr G t -> Vect n (Prog s (S s)) -> Prog s (S s)
   compile (Val i)         sf    = [PUSH i]
-  compile (Boo b)         sf    = case b of
-                                       True => [PUSH 1]
-                                       _    => [PUSH 0]
-  --compile (OpB Add v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [ADD]
-  --compile (OpB Sub v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [SUB]
-  --compile (OpB Mul v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [MUL]
-  --compile (OpB Div v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [DIV]
-  --compile (OpB Eql v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [EQL]
-  --compile (OpB Lt  v1 v2)    sf = compile v1 sf +++ compile v2 sf +++ [LTH]
+  compile (Boo True)      sf    = [PUSH 1]
+  compile (Boo False)     sf    = [PUSH 0]
+  compile {s} (OpB o v1 v2) sf = compileOp o where
+      partial -- Should be declared total when outer function compile is total
+      compileOp : BinOp a b c -> Prog s (S s)
+      compileOp Add = compile v1 sf +++ compile v2 (map weaken sf) +++ [ADD]
+      compileOp Sub = compile v1 sf +++ compile v2 (map weaken sf) +++ [SUB]
+      compileOp Mul = compile v1 sf +++ compile v2 (map weaken sf) +++ [MUL]
+      compileOp Div = compile v1 sf +++ compile v2 (map weaken sf) +++ [DIV]
+      compileOp Eql = compile v1 sf +++ compile v2 (map weaken sf) +++ [EQL]
+      compileOp Lt  = compile v1 sf +++ compile v2 (map weaken sf) +++ [LTH]
   compile (OpU Nay v)        sf = compile v  sf +++ [NAY] 
-  compile (If b tb fb)       sf = compile b  sf +++ [IF (compile tb sf) (compile fb sf)]
+--  compile (If b tb fb)       sf = compile b  sf +++ [IF (compile tb sf) (compile fb sf)]
   compile (App (Lam b) e)    sf = compile b ((compile e sf) :: sf)
   compile (Var stop)  (e :: sf) = e
   compile (Var (pop k)) (e :: sf) = compile (Var k) sf
- 
+
  
   test4 : Expr Nil TipInt
   test4 = If (OpU Nay (OpB Eql (Val 3) (Val 2))) (OpB Add (Val 2) (Val 3)) (Val 2)
