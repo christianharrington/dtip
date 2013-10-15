@@ -77,18 +77,18 @@ using (G: Vect n Tip)
   compile (Boo True)      sf    = [PUSH 1]
   compile (Boo False)     sf    = [PUSH 0]
   compile {s} (OpB o v1 v2) sf = compileOp o where
-      partial -- Should be declared total when outer function compile is total
-      compileOp : BinOp a b c -> Prog s (S s)
-      compileOp Add = compile v1 sf +++ compile v2 (map weaken sf) +++ [ADD]
-      compileOp Sub = compile v1 sf +++ compile v2 (map weaken sf) +++ [SUB]
-      compileOp Mul = compile v1 sf +++ compile v2 (map weaken sf) +++ [MUL]
-      compileOp Div = compile v1 sf +++ compile v2 (map weaken sf) +++ [DIV]
-      compileOp Eql = compile v1 sf +++ compile v2 (map weaken sf) +++ [EQL]
-      compileOp Lt  = compile v1 sf +++ compile v2 (map weaken sf) +++ [LTH]
+    partial -- Should be declared total when outer function compile is total
+    compileOp : BinOp a b c -> Prog s (S s)
+    compileOp Add = compile v1 sf +++ compile v2 (map weaken sf) +++ [ADD]
+    compileOp Sub = compile v1 sf +++ compile v2 (map weaken sf) +++ [SUB]
+    compileOp Mul = compile v1 sf +++ compile v2 (map weaken sf) +++ [MUL]
+    compileOp Div = compile v1 sf +++ compile v2 (map weaken sf) +++ [DIV]
+    compileOp Eql = compile v1 sf +++ compile v2 (map weaken sf) +++ [EQL]
+    compileOp Lt  = compile v1 sf +++ compile v2 (map weaken sf) +++ [LTH]
   compile (OpU Nay v)        sf = compile v  sf +++ [NAY] 
   compile (If b tb fb)       sf = compile tb sf +++ 
                                   compile fb (map weaken sf) +++ 
-                                  compile b  (map weaken (map weaken sf)) +++ [IF]
+                                  compile b  (map (weaken . weaken) sf) +++ [IF]
   compile (App (Lam b) e)    sf = compile b ((compile e sf) :: sf)
   compile (Var stop)  (e :: sf) = e
   compile (Var (pop k)) (e :: sf) = compile (Var k) sf
@@ -100,5 +100,3 @@ using (G: Vect n Tip)
   partial
   test5 : Prog 0 1
   test5 = compile test4 Nil
-
-
