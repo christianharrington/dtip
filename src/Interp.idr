@@ -41,7 +41,7 @@ using (G: Vect n Tip)
     InL  : Expr G a -> (b: Tip) -> Expr G (TipSum a b) -- Inject into left branch
     InR  : Expr G b -> (a: Tip) -> Expr G (TipSum a b) -- Inject into right branch
     Case : Expr G (TipSum a b) -> Expr (a :: G) c -> Expr (b :: G) c -> Expr G c -- Destruct sum type
-    OpU  : UnOp a b -> Expr G a -> Expr G b 
+    OpU  : UnOp a b -> Expr G a -> Expr G b
     OpB  : BinOp a b c -> Expr G a -> Expr G b -> Expr G c
 
   data Env : Vect n Tip -> Type where

@@ -17,7 +17,8 @@ mutual
    
  data InfTerm : Type where
    lAnno : CheckTerm -> Tip -> InfTerm -- Annotate a checkable type with a type
-   lApp  : InfTerm -> CheckTerm -> InfTerm 
+   lApp  : InfTerm -> CheckTerm -> InfTerm
+   lUnit : InfTerm
    lVar  : Nat -> InfTerm
    lVal  : Int -> InfTerm
    lBoo  : Bool -> InfTerm
@@ -105,6 +106,7 @@ mutual
   infer (lApp f x) G          = do (TipFun t t' ** f') <- infer f G -- Should probably fail more gracefully
                                    x'                  <- check x G t
                                    return (_ ** App f' x')
+  infer lUnit G               = Just (_ ** U)
   infer (lVar n) G            = do i        <- natToFinFromVect n G
                                    (_ ** p) <- makeHasType i G
                                    return (_ ** Var p) 
