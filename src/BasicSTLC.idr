@@ -5,21 +5,24 @@ import Interp
 
 mutual
  data CheckTerm : Type where
-   lInf : InfTerm -> CheckTerm
-   lLam : CheckTerm -> CheckTerm
-
+   lInf  : InfTerm -> CheckTerm
+   lLam  : CheckTerm -> CheckTerm
+   lIf   : CheckTerm -> CheckTerm -> CheckTerm -> CheckTerm
+   lPair : CheckTerm -> CheckTerm -> CheckTerm
+   lInL  : CheckTerm -> CheckTerm
+   lInR  : CheckTerm -> CheckTerm
+   lCase : InfTerm -> CheckTerm -> CheckTerm -> CheckTerm
+   lOpU  : UnOp -> CheckTerm
+   lOpB  : BinOp -> CheckTerm
+   
  data InfTerm : Type where
    lAnno : CheckTerm -> Tip -> InfTerm -- Annotate a checkable type with a type
    lApp  : InfTerm -> CheckTerm -> InfTerm 
    lVar  : Nat -> InfTerm
    lVal  : Int -> InfTerm
    lBoo  : Bool -> InfTerm
-   lIf   : CheckTerm -> InfTerm -> CheckTerm -> InfTerm
-   lPair : InfTerm -> InfTerm -> InfTerm
    lFst  : InfTerm -> InfTerm
    lSnd  : InfTerm -> InfTerm
-   lOpU  : UnOp -> InfTerm
-   lOpB  : BinOp -> InfTerm
 
  data BinOp : Type where
    Plus   : CheckTerm -> CheckTerm -> BinOp
@@ -53,12 +56,47 @@ exprTipEqSwap t t' G (No  p) e = Nothing
 mutual
   partial
   check : CheckTerm -> (G: Vect n Tip) -> (t: Tip) -> Maybe (Expr G t)
-  check (lInf iterm) G t            = do (t' ** e) <- infer iterm G
-                                         expr <- exprTipEqSwap t' t G (decEq t' t) e -- Swap t with t'
-                                         return expr
-  check (lLam body) G (TipFun t t') = do b <- check body (t :: G) t'
-                                         return $ Lam b
-  check _ _ _                       = Nothing
+  check (lInf iterm) G t             = do (t' ** e) <- infer iterm G
+                                          expr <- exprTipEqSwap t' t G (decEq t' t) e -- Swap t with t'
+                                          return expr
+  check (lLam body) G (TipFun t t')  = do b <- check body (t :: G) t'
+                                          return $ Lam b
+  check (lIf c tb fb) G t            = do c'  <- check c G TipBool
+                                          tb' <- check tb G t
+                                          fb' <- check fb G t
+                                          return $ If c' tb' fb'
+  check (lPair a b) G (TipProd t t') = do a' <- check a G t
+                                          b' <- check b G t'
+                                          return $ Pair a' b'
+  check (lInL e) G (TipSum t t')     = do e' <- check e G t
+                                          return $ InL e' t' 
+  check (lInR e) G (TipSum t t')     = do e' <- check e G t'
+                                          return $ InR e' t
+  check (lCase s l r) G t            = do (TipSum lt rt ** s') <- infer s G
+                                          l'                   <- check l (lt :: G) t
+                                          r'                   <- check r (rt :: G) t
+                                          return $ Case s' l' r'
+  check (lOpU (NNot a)) G TipBool    = do a' <- check a G TipBool
+                                          return $ OpU Nay a'   
+  check (lOpB (Plus a b)) G TipInt   = do leftOp  <- check a G TipInt
+                                          rightOp <- check b G TipInt
+                                          return $ OpB Add leftOp rightOp
+  check (lOpB (Minus a b)) G TipInt  = do leftOp  <- check a G TipInt
+                                          rightOp <- check b G TipInt
+                                          return $ OpB Sub leftOp rightOp
+  check (lOpB (Times a b)) G TipInt  = do leftOp  <- check a G TipInt
+                                          rightOp <- check b G TipInt
+                                          return $ OpB Mul leftOp rightOp
+  check (lOpB (Divide a b)) G TipInt = do leftOp  <- check a G TipInt
+                                          rightOp <- check b G TipInt
+                                          return $ OpB Div leftOp rightOp
+  check (lOpB (Equal a b)) G TipBool = do leftOp  <- check a G TipInt
+                                          rightOp <- check b G TipInt
+                                          return $ OpB Eql leftOp rightOp
+  check (lOpB (Less a b)) G TipBool  = do leftOp  <- check a G TipInt
+                                          rightOp <- check b G TipInt
+                                          return $ OpB Lt leftOp rightOp
+  check _ _ _                        = Nothing
 
   partial
   infer : InfTerm -> (G: Vect n Tip) -> Maybe (t: Tip ** Expr G t)
@@ -72,48 +110,21 @@ mutual
                                    return (_ ** Var p) 
   infer (lVal i) G            = Just (_ ** Val i)
   infer (lBoo b) G            = Just (_ ** Boo b)
-  infer (lIf c t f) G         = do c'        <- check c G TipBool
-                                   (a ** t') <- infer t G
-                                   f'        <- check f G a
-                                   return (_ ** If c' t' f')
-  infer (lPair a b) G         = do (_ ** a') <- infer a G
-                                   (_ ** b') <- infer b G
-                                   return (_ ** Pair a' b')
-  infer (lFst p) G            = do (TipPair a b ** p') <- infer p G
+  infer (lFst p) G            = do (TipProd a b ** p') <- infer p G
                                    return (_ ** Fst p')
-  infer (lSnd p) G            = do (TipPair a b ** p') <- infer p G
+  infer (lSnd p) G            = do (TipProd a b ** p') <- infer p G
                                    return (_ ** Snd p')
-  infer (lOpU (NNot a)) G     = do x <- check a G TipBool
-                                   return (_ ** OpU Nay x)       
-  infer (lOpB (Plus a b)) G   = do leftOp  <- check a G TipInt
-                                   rightOp <- check b G TipInt
-                                   return (_ ** OpB Add leftOp rightOp)
-  infer (lOpB (Minus a b)) G  = do leftOp  <- check a G TipInt
-                                   rightOp <- check b G TipInt
-                                   return (_ ** OpB Sub leftOp rightOp)
-  infer (lOpB (Times a b)) G  = do leftOp  <- check a G TipInt
-                                   rightOp <- check b G TipInt
-                                   return (_ ** OpB Mul leftOp rightOp)
-  infer (lOpB (Divide a b)) G = do leftOp  <- check a G TipInt
-                                   rightOp <- check b G TipInt
-                                   return (_ ** OpB Div leftOp rightOp)
-  infer (lOpB (Equal a b)) G  = do leftOp  <- check a G TipInt
-                                   rightOp <- check b G TipInt
-                                   return (_ ** OpB Eql leftOp rightOp)
-  infer (lOpB (Less a b)) G   = do leftOp  <- check a G TipInt
-                                   rightOp <- check b G TipInt
-                                   return (_ ** OpB Lt leftOp rightOp)
   infer _ _                   = Nothing
 
 
 --- Type checking examples ---
 partial
 testOp : Maybe (t: Tip ** Expr Nil t)
-testOp =  infer (lApp (lAnno (lLam (lLam (lInf (lOpB (Plus (lInf (lVar 1)) (lInf (lVar 0))))))) (TipFun TipInt (TipFun TipInt TipInt))) (lInf (lVal 3))) Nil
+testOp =  infer (lApp (lAnno (lLam (lLam (lOpB (Plus (lInf (lVar 1)) (lInf (lVar 0)))))) (TipFun TipInt (TipFun TipInt TipInt))) (lInf (lVal 3))) Nil
   
 partial
 testOpNeg : Maybe (t: Tip ** Expr Nil t)
-testOpNeg =  infer (lApp (lAnno (lLam (lLam (lInf (lOpB (Plus (lInf (lVar 1)) (lInf (lVar 0))))))) (TipFun TipBool (TipFun TipInt TipInt))) (lInf (lVal 3))) Nil
+testOpNeg =  infer (lApp (lAnno (lLam (lLam (lOpB (Plus (lInf (lVar 1)) (lInf (lVar 0)))))) (TipFun TipBool (TipFun TipInt TipInt))) (lInf (lVal 3))) Nil
 
 partial
 testVal : Maybe (t: Tip ** Expr Nil t)
@@ -146,14 +157,14 @@ testApp'Neg = check (lLam (lLam (lInf (lApp (lVar 1) (lInf (lVar 0)))))) Nil (Ti
 -- (App (lAnno (lLam (lInf (lOpe (Plus (lVar 0) (lVar 1))))) (TipFun TipInt (TipFun TipInt TipInt))) (lInf (lVal 5)))
 partial
 testApp'' : Maybe (Expr Nil TipInt)
-testApp'' = check (lInf (lApp (lAnno (lLam (lInf (lOpB (Plus (lInf (lVar 0)) (lInf (lVal 4)))))) (TipFun TipInt TipInt)) (lInf (lVal 4)))) Nil TipInt
+testApp'' = check (lInf (lApp (lAnno (lLam (lOpB (Plus (lInf (lVar 0)) (lInf (lVal 4))))) (TipFun TipInt TipInt)) (lInf (lVal 4)))) Nil TipInt
 
-partial
-testApp''' : Maybe (Expr Nil TipInt)
-testApp''' = check (lInf (lApp (lAnno (lLam (lInf (lOpB (Plus (lInf (lVar 0)) (lInf (lApp (lAnno (lLam (lInf (lOpB (Plus (lInf (lVar 0)) (lInf (lVar 1)))))) (TipFun TipInt TipInt)) (lInf (lVal 5)))))))) (TipFun TipInt TipInt)) (lInf (lVal 4)))) Nil TipInt
+--partial
+--testApp''' : Maybe (Expr Nil TipInt)
+--testApp''' = check (lInf (lApp (lAnno (lLam (lOpB (Plus (lInf (lVar 0)) (lInf (lApp (lAnno (lLam (lOpB (Plus (lInf (lVar 0)) (lInf (lVar 1)))))) (TipFun TipInt TipInt)) (lInf (lVal 5)))))))) (TipFun TipInt TipInt)) (lInf (lVal 4)))) Nil TipInt
 
 eqTerm : CheckTerm --Expr Nil (TipFun TipInt (TipFun TipInt TipBool))
-eqTerm = lLam (lLam (lInf (lOpB (Equal (lInf (lVar 1)) (lInf (lVar 0))))))
+eqTerm = lLam (lLam (lOpB (Equal (lInf (lVar 1)) (lInf (lVar 0)))))
 
 partial
 testEq : Maybe (Expr Nil (TipFun TipInt (TipFun TipInt TipBool)))
@@ -164,7 +175,7 @@ testEqApp : Maybe (Expr Nil TipBool)
 testEqApp = check (lInf (lApp (lApp (lAnno eqTerm (TipFun TipInt (TipFun TipInt TipBool))) (lInf (lVal 5))) (lInf (lVal 5)))) Nil TipBool
 
 ifTerm : CheckTerm
-ifTerm = lLam (lLam (lLam (lInf (lIf (lInf (lVar 2)) (lVar 1) (lInf (lVar 0))))))
+ifTerm = lLam (lLam (lLam (lIf (lInf (lVar 2)) (lInf (lVar 1)) (lInf (lVar 0)))))
 
 partial
 testIfTerm : Maybe (Expr Nil (TipFun TipBool (TipFun TipInt (TipFun TipInt TipInt))))
@@ -176,7 +187,7 @@ testIfApp = check (lInf (lApp (lApp (lApp (lAnno ifTerm (TipFun TipBool (TipFun 
 
 partial -- lOpB (Less (lInf (lVal 42)) (lInf (lVal 43))))
 testIfApp' : Maybe (Expr Nil TipInt) 
-testIfApp' = check (lInf (lApp (lApp (lApp (lAnno ifTerm (TipFun TipBool (TipFun TipInt (TipFun TipInt TipInt)))) (lInf (lOpB (Less (lInf (lVal 42)) (lInf (lVal 43)))))) (lInf (lVal 1))) (lInf (lVal 0)))) Nil TipInt
+testIfApp' = check (lInf (lApp (lApp (lApp (lAnno ifTerm (TipFun TipBool (TipFun TipInt (TipFun TipInt TipInt)))) (lOpB (Less (lInf (lVal 42)) (lInf (lVal 43))))) (lInf (lVal 1))) (lInf (lVal 0)))) Nil TipInt
 
 
 ---------- Proofs ----------
