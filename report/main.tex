@@ -1,0 +1,57 @@
+%!TEX TS-options = -shell-escape
+\documentclass[oribibl]{llncs}
+\pagestyle{headings} %page numbers
+\usepackage{makeidx}  % allows for indexgeneration
+
+\usepackage[utf8]{inputenc}
+\usepackage{pdfpages}
+% \DeclareUnicodeCharacter{00A0}{DELETE THIS SPACE} %Uncomment to find 'invisible spaces' causing build errors
+% \usepackage[nottoc,numbib]{tocbibind}
+% \usepackage[center]{caption}
+\usepackage{todonotes} % remove later - this is for TODO notes
+\usepackage{float}
+
+\usepackage{enumitem}
+\usepackage[T1]{fontenc} % Fixed missing font warning for \maketitle
+%\usepackage[margin=1.5in]{geometry}
+\usepackage{url}
+% DOUBLE FOOTNOTES ACROSS THE SKY
+\usepackage[multiple]{footmisc}
+\renewcommand{\footnotemargin}{3.99pt}
+
+% %% to make urls look better in bibliography
+% \makeatletter
+% \def\url@leostyle{%
+%   \@ifundefined{selectfont}{\def\UrlFont{\sf}}{\def\UrlFont{\small\ttfamily}}}
+% \makeatother
+% %% Now actually use the newly defined style.
+% \urlstyle{leo}
+
+\bibliographystyle{plain}
+\begin{document}
+% insert the table of contents if want, it is not required
+% llncs says: "If you are the author of a single contribution you
+% normally have no running heads and no table of contents."
+% \tableofcontents
+\mainmatter
+\title{DTIP}
+\author{Sune Alkærsig \and Thomas Hallier Didriksen \and Christian Harrington \\
+\email{\{sual, thdi, cnha\}@itu.dk}}
+
+\institute{IT University of Copenhagen, Rued Langgaards Vej 7, 2300 Copenhagen S, Denmark}
+\maketitle
+% typeset the title of the contribution
+\begin{abstract}
+\input{sections/abstract}
+\keywords{Dependent types, DSL}
+\end{abstract}
+
+\input{sections/introduction}
+\input{sections/background}
+
+\bibliography{bibliography}
+
+\clearpage %To ensure pagebreak before appendices
+\appendix
+
+\end{document}
