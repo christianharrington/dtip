@@ -54,6 +54,20 @@ using (G: Vect n Tip)
 
   partial
   optimize : Expr G t -> Expr G t
+  optimize (OpB o e1 e2) = optimizeOp o e1 e2 where
+    partial
+    optimizeOp : BinOp a b c -> Expr G a -> Expr G b -> Expr G c
+    optimizeOp Add e1 e2 = optimizeAddOp e1 e2 where
+      partial
+      optimizeAddOp : Expr G TipInt -> Expr G TipInt -> Expr G TipInt
+      optimizeAddOp (Val a) (Val b)    = Val (a + b)
+      optimizeAddOp a       (Val 0)    = optimize a
+      optimizeAddOp (Val 0) a          = optimize a
+    optimizeOp Sub e1 e2 = optimizeSubOp e1 e2 where
+      partial
+      optimizeSubOp : Expr G TipInt -> Expr G TipInt -> Expr G TipInt
+      optimizeSubOp (Val x) (Val y)    = Val (x - y)
+      optimizeSubOp a       (Val 0)    = optimize a
   -- These are really slow for some reason!
   --optimize (OpB Add (Val x) (Val y)) = Val (x + y)
   --optimize (OpB Add a (Val 0))       = optimize a
