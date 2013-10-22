@@ -4,11 +4,6 @@ import Interp
 
 %default total
 
-data StackEff : Nat -> Nat -> Type where
-  Increase : (n : Nat) -> (m : Nat) -> StackEff n (n + m)
-  Flat     : (n : Nat) -> StackEff n n
-  Decrease : (n : Nat) -> (m : Nat) -> StackEff (n + m) n
-
 mutual
   data Inst : Nat -> Nat -> Type where
     PUSH : Int -> Inst s         (S s)
@@ -78,28 +73,48 @@ using (G: Vect n Tip)
   weakenProg Nil = Nil
   weakenProg (instr :: p) = weakenInst instr :: weakenProg p
 
+  {-data StackEff : Nat -> Nat -> Type where
+    Inc  : {n : Nat} -> (m : Nat) -> StackEff n (m + n)
+    Flat : {n : Nat} -> StackEff n n
+    Dec  : {n : Nat} -> (m : Nat) -> StackEff (m + n) n-}
+
+  data Eff : Type where
+    Inc  : Nat -> Eff
+    Dec  : Nat -> Eff
+    Flat : Eff
+
+  getProg : Nat -> Eff -> Type
+  getProg n (Inc m) = Prog n (S (m + n))
+  getProg n (Dec m) = Prog (S (m + n)) n
+  getProg n Flat    = Prog n n
+
+  partial
+  getEff : Tip -> Eff
+  getEff TipInt  = Inc 0
+  getEff TipBool = Inc 0
+
   partial -- Should be total when finished
-  compile : Expr G t -> Vect n (Prog s (S s)) -> (eff: (Nat, Nat) ** Prog (fst eff) (snd eff))
-  compile (Val i)         sf    = ((0, 1) ** [PUSH i])
-  compile (Boo True)      sf    = ((0, 1) ** [PUSH 1])
-  compile (Boo False)     sf    = ((0, 1) ** [PUSH 0])
-  compile (OpB o v1 v2) sf = compileOp o where
+  compile : Expr G t -> Vect n (Prog p (S p)) -> getProg s (getEff t)
+  compile (Val i)         sf    = [PUSH i]
+  compile (Boo True)      sf    = [PUSH 1]
+  compile (Boo False)     sf    = [PUSH 0]
+  compile (OpU Nay v)     sf    = compile v sf +++ [NAY]
+  {-compile (OpB o v1 v2) sf = compileOp o where
     partial -- Should be declared total when outer function compile is total
     compileOp : BinOp a b c -> (eff: (Nat, Nat) ** Prog (fst eff) (snd eff))
     compileOp Add with (compile v1 sf) 
       | ((n, (S n)) ** s1) with (compile v2 sf)
         | ((S n, S (S n)) ** s2) = ((n, S n) ** (s1 +++ s2 +++ [ADD]))
         | ((x, y) ** z) = ((0, 1) ** ([DBUG x] +++ [DBUG y] +++ [ADD]))
-    {-compileOp Sub = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [SUB]
+    compileOp Sub = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [SUB]
     compileOp Mul = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [MUL]
     compileOp Div = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [DIV]
     compileOp Eql = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [EQL]
     compileOp Lt  = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [LTH]-}
-  compile (OpU Nay v) sf with (compile v sf) | ( (n, (S m)) ** s) = ((n, (S m)) ** (s +++ [NAY]))
-  {-compile (If b tb fb)       sf = compile tb sf +++ 
-                                  compile fb (map weakenProg sf) +++ 
-                                  compile b  (map (weakenProg . weakenProg) sf) +++ [IF]
-  compile (App (Lam b) e)    sf = compile b ((compile e sf) :: sf)
+  compile (If b tb fb)       sf = compile tb sf +++ 
+                                  compile fb sf +++ 
+                                  compile b  sf +++ [IF]
+  {-compile (App (Lam b) e)    sf = compile b ((compile e sf) :: sf)
   compile (Var stop)  (e :: sf) = e
   compile (Var (pop k)) (e :: sf) = compile (Var k) sf
 
