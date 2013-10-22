@@ -1,0 +1,81 @@
+%!TEX root = ../main.tex
+\section{A Well-Typed Expression Language}
+\label{sec:a-well-typed-expression-language}
+
+Having seen the standard definition of the simply typed lambda calculus, we will now see how the power of dependent types can be utilized to create a typed lambda calculus in which terms are well-typed by definition. The idea of a well-typed expression language was first described by Augustsson and Carlsson\,\cite{Augustsson99anexercise} in the context of defining a well-typed interpreter, and has now become a classic example of elegant use of dependent types. The version shown here is based on an implementation of a well-typed interpreter in Idris by Brady\,\cite{Brady:IdrisTutorial}.
+
+\subsection{The Property of Being Well-Typed}
+The main motivation behind the well-typed expression language is the ability to create terms that are ``correct by construction''. This means that whenever we construct a term, we have the added guarantee that it is well-typed. In other words, it is impossible to construct a term that is not well-typed. To see how this works, let us first consider the data type defining the language, Expr, shown in Figure [Figure showing the well-typed expression language (perhaps partially)]:
+
+\begin{center}
+Expr : Vect n Tip $\rightarrow$ Tip $\rightarrow$ Type
+\end{center}
+
+\paragraph{}
+\textit{Expr} is a type that depends on a vector of types, representing the variable environment, and an explicit type representing the type of a term in the language (Tip is the internal type of types in the expression language). Thus, every term is indexed by an internal type at the type level of Idris. As a consequence, we can statically enforce the type of a term, which becomes a powerful tool when we begin constructing terms from terms.
+
+\begin{figure}
+\begin{center}
+If : Expr G TipBool $\rightarrow$ Expr G t $\rightarrow$ Expr G t $\rightarrow$ Expr G t
+\end{center}
+
+\begin{prooftree}
+\AxiomC{$\Gamma$ $\vdash$ $c$ : Bool}
+\AxiomC{$\Gamma$ $\vdash$ $e_{1}$ : $\tau$}
+\AxiomC{$\Gamma$ $\vdash$ $e_{2}$ : $\tau$}
+\RightLabel{(T-IF)}
+\TrinaryInfC{$\Gamma$ $\vdash$ IF $c$ THEN $e_{1}$ ELSE $e_{2}$ : $\tau$}
+\end{prooftree}
+\caption{Data constructor and typing rule for conditionals.}
+\label{fig:if-constructor-and-typing-rule}
+\end{figure}
+To clarify, consider the example of a conditional, the data constructor and typing rule for which is shown in Figure \ref{fig:if-constructor-and-typing-rule}. A conditional requires a term with a boolean type (or TipBool), and two terms of an arbitrary type $\tau$ (or $t$) for the true and false branches, respectively. Since $\Gamma$ and \textit{G} are different names for the same variable environment, and $e_{1}$ and $e_{2}$ are merely explicit names for the two corresponding arguments to the If data constructor, the correspondence between the data constructor and the typing rule should be clear. Hence, the conditional term is ``correct by construction''. The rest of the terms can be deduced by similar reasoning.
+
+\subsection{Interpreting the Expression Language}
+The challenge of interpreting the well-typed language is that we do not want to lose the guarantee of well-typedness in the process. In general, our goal is to map each term of the expression language into an equivalent Idris term. As pointed out by Augustsson and Carlsson\,\cite{Augustsson99anexercise}, a na\"{i}ve implementation might simply define the resulting type of the interpreter as a general sum type, such as the Value type shown in Figure \ref{fig:naive-interpreter-impl}.  
+
+\begin{figure}
+\begin{alltt}
+data Value : Type where
+  VInt  : Int \(\rightarrow\) Value
+  VBool : Bool \(\rightarrow\) Value
+  VIf   : Value \(\rightarrow\) Value \(\rightarrow\) Value \(\rightarrow\) Value
+
+interp : Expr G t -> Value
+interp (Val i) = VInt i
+interp (Boo b) = VBool b
+interp (If c t f) = VIf (interp c) (interp t) (interp f)
+\end{alltt}
+\caption{A na\"{i}ve (and partial) implementation of an interpreter for the language.}
+\label{fig:naive-interpreter-impl}
+\end{figure}
+\paragraph{}
+However, such an interpreter has several critical problems. First, given an \textit{Expr} term, we have no static guarantee that we interpret it as an Idris term that makes sense. For instance, there is no compile-time guarantee that \textit{interp (Boo True)} does not always result in \textit{VInt 0}. Secondly, the type system cannot statically enforce that the resulting values are well-typed. Consequently, interpreting a conditional might result in a \textit{VIf} value with different types in its two branches.
+
+\paragraph{}
+Following Brady's example\,\cite{Brady:IdrisTutorial}, we remedy this situation by making the interpreter well-typed, as shown in Figure \ref{fig:well-typed-interpreter-impl}.
+
+\begin{figure}
+\begin{alltt}
+interpTip : Tip \(\rightarrow\) Type
+interpTip TipInt  = Int
+interpTip TipBool = Bool
+
+interp : Expr G t \(\rightarrow\) interpTip t
+interp (Val i) = i
+interp (Boo b) = b
+interp (If c t f) = \underline{if} (interp c) \underline{then} (interp t) \underline{else} (interp f)
+\end{alltt}
+\caption{A simple (and partial) implementation of a well-typed interpreter for the language.}
+\label{fig:well-typed-interpreter-impl}
+\end{figure}
+
+\paragraph{}
+\textit{interpTip} is a function that converts our internal types (Tip) to Idris types (Type). The most significant changes are found in the \textit{interp} function, though. Because the \textit{interp} function now goes from an \textit{Expr} term indexed by an internal type \textit{t} to an Idris type through \textit{interpTip t}, the first problem above is clearly resolved: A term \textit{Expr G TipBool}, such as \textit{Boo True}, will never be interpreted as an Int. The second problem is resolved by the type checker, as the \textit{interp} function can be implemented in a way such that the well-typedness of the terms are preserved. For example, interpreting an \textit{Expr} conditional is interpreted as an Idris conditional, which by defition does not allow different types in the true and false branches.
+
+\paragraph{}
+[Write segway into next section.]
+
+%How is it defined
+%Why do we want it? / Benefits
+%Drawbacks

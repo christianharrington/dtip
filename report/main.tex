@@ -19,6 +19,11 @@
 \usepackage[multiple]{footmisc}
 \renewcommand{\footnotemargin}{3.99pt}
 
+\usepackage{bussproofs}
+\usepackage{alltt}
+
+\DeclareMathSymbol{\Gamma}{\mathalpha}{operators}{0}
+
 % %% to make urls look better in bibliography
 % \makeatletter
 % \def\url@leostyle{%
@@ -48,6 +53,12 @@
 
 \input{sections/introduction}
 \input{sections/background}
+\input{sections/the-simply-typed-lambda-calculus}
+\input{sections/a-well-typed-expression-language}
+\input{sections/type-checking}
+\input{sections/stack-machine}
+\input{sections/practical-reflections}
+\input{sections/conclusion}
 % Simply-typed lambda calculus
   % Naive implementation
 % Well-typed expression language
