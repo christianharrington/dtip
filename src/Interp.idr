@@ -43,6 +43,7 @@ using (G: Vect n Tip)
     Case : Expr G (TipSum a b) -> Expr (a :: G) c -> Expr (b :: G) c -> Expr G c -- Destruct sum type
     OpU  : UnOp a b -> Expr G a -> Expr G b
     OpB  : BinOp a b c -> Expr G a -> Expr G b -> Expr G c
+    Fix  : Expr G (TipFun t t) -> Expr G t
 
   data Env : Vect n Tip -> Type where
     Nil  : Env Nil
