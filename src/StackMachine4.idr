@@ -7,7 +7,6 @@ import Interp
 mutual
   data Inst : Nat -> Nat -> Type where
     PUSH : Int -> Inst s         (S s)
-    DBUG : Nat -> Inst s         (S s)
     ADD  :        Inst (S (S s)) (S s)
     SUB  :        Inst (S (S s)) (S s)
     MUL  :        Inst (S (S s)) (S s)
@@ -67,7 +66,6 @@ using (G: Vect n Tip)
   weakenInst LTH  = LTH
   weakenInst NAY  = NAY
   weakenInst IF   = IF
-  weakenInst (DBUG n) = DBUG n
 
   weakenProg : Prog n m -> Prog (S n) (S m)
   weakenProg Nil = Nil
@@ -90,44 +88,54 @@ using (G: Vect n Tip)
 
   partial
   getEff : Tip -> Eff
+  getEff TipUnit = Flat
   getEff TipInt  = Inc 0
   getEff TipBool = Inc 0
 
-  partial -- Should be total when finished
-  compile : Expr G t -> Vect n (Prog p (S p)) -> getProg s (getEff t)
-  compile (Val i)         sf    = [PUSH i]
-  compile (Boo True)      sf    = [PUSH 1]
-  compile (Boo False)     sf    = [PUSH 0]
-  compile (OpU Nay v)     sf    = compile v sf +++ [NAY]
-  {-compile (OpB o v1 v2) sf = compileOp o where
-    partial -- Should be declared total when outer function compile is total
-    compileOp : BinOp a b c -> (eff: (Nat, Nat) ** Prog (fst eff) (snd eff))
-    compileOp Add with (compile v1 sf) 
-      | ((n, (S n)) ** s1) with (compile v2 sf)
-        | ((S n, S (S n)) ** s2) = ((n, S n) ** (s1 +++ s2 +++ [ADD]))
-        | ((x, y) ** z) = ((0, 1) ** ([DBUG x] +++ [DBUG y] +++ [ADD]))
-    compileOp Sub = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [SUB]
-    compileOp Mul = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [MUL]
-    compileOp Div = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [DIV]
-    compileOp Eql = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [EQL]
-    compileOp Lt  = compile v1 sf +++ compile v2 (map weakenProg sf) +++ [LTH]-}
-  compile (If b tb fb)       sf = compile tb sf +++ 
-                                  compile fb sf +++ 
-                                  compile b  sf +++ [IF]
-  {-compile (App (Lam b) e)    sf = compile b ((compile e sf) :: sf)
-  compile (Var stop)  (e :: sf) = e
-  compile (Var (pop k)) (e :: sf) = compile (Var k) sf
-
+  getTip : Expr G t -> Tip
+  getTip {t=t} e = t
  
+  data StackFrame : Vect n Tip -> Nat -> Type where
+    Nill : StackFrame [] Z
+    (:::) : Expr G t -> StackFrame G n -> StackFrame (t :: G) (S n)
+  infixr 10 :::
+  
+  partial -- Should be total when finished
+  compile : Expr G t -> StackFrame G n -> getProg s (getEff t)
+  compile U                 sf    = StackMachine4.Nil
+  compile (Val i)           sf    = [PUSH i]
+  compile (Boo True)        sf    = [PUSH 1]
+  compile (Boo False)       sf    = [PUSH 0]
+  compile (OpU Nay v)       sf    = compile v sf +++ [NAY]
+  compile (OpB o v1 v2) sf = compileOp o v1 v2 sf where
+    partial -- Should be declared total when outer function compile is total
+    compileOp : BinOp a b c -> Expr G a -> Expr G b -> StackFrame G n -> getProg s (getEff c)
+    compileOp Add e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [ADD]
+    compileOp Sub e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [SUB]
+    compileOp Mul e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [MUL]
+    compileOp Div e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [DIV]
+    compileOp Eql e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [EQL]
+    compileOp Lt  e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [LTH]
+  compile (If b tb fb) {t} sf with (t)
+    | TipUnit = []
+    | TipBool = compile tb sf +++ compile fb sf +++ compile b  sf +++ [IF]
+    | TipInt  = compile tb sf +++ compile fb sf +++ compile b  sf +++ [IF]
+  compile (App (Lam b) e) sf = compile b (e ::: sf)
+  compile (Var stop) {G = x :: xs} (e ::: sf) = compile e sf
+  compile (Var (pop k)) (e ::: sf) = compile (Var k) sf
+  {-compile (Pair e1 e2) {a} {b} sf with (a, b) 
+    | (TipUnit, TipUnit) = -}
+
+  
   test4 : Expr Nil TipInt
   test4 = App (Lam (If (OpU Nay (OpB Eql (Var stop) (Val 2))) (OpB Add (Val 2) (Val 3)) (Val 2))) (Val 3)
 
   partial
   test5 : Prog 0 1
-  test5 = compile test4 Nil-}
+  test5 = compile test4 Nill
 
-  test4 : Expr Nil TipBool
+{-  test4 : Expr Nil TipBool
   test4 = (OpU Nay (Boo True))
 
   test5 : Expr Nil TipInt
-  test5 = (OpB Add (Val 1) (Val 2))
+  test5 = (OpB Add (Val 1) (Val 2))-}
