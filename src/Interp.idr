@@ -53,34 +53,21 @@ using (G: Vect n Tip)
   lookup stop    (x :: xs) = x
   lookup (pop k) (x :: xs) = lookup k xs
 
-  partial
   optimize : Expr G t -> Expr G t
-  optimize (OpB o e1 e2) = optimizeOp o e1 e2 where
-    partial
-    optimizeOp : BinOp a b c -> Expr G a -> Expr G b -> Expr G c
-    optimizeOp Add e1 e2 = optimizeAddOp e1 e2 where
-      partial
-      optimizeAddOp : Expr G TipInt -> Expr G TipInt -> Expr G TipInt
-      optimizeAddOp (Val a) (Val b)    = Val (a + b)
-      optimizeAddOp a       (Val 0)    = optimize a
-      optimizeAddOp (Val 0) a          = optimize a
-    optimizeOp Sub e1 e2 = optimizeSubOp e1 e2 where
-      partial
-      optimizeSubOp : Expr G TipInt -> Expr G TipInt -> Expr G TipInt
-      optimizeSubOp (Val x) (Val y)    = Val (x - y)
-      optimizeSubOp a       (Val 0)    = optimize a
-  -- These are really slow for some reason!
-  --optimize (OpB Add (Val x) (Val y)) = Val (x + y)
-  --optimize (OpB Add a (Val 0))       = optimize a
-  --optimize (OpB Add (Val 0) a)       = optimize a
-  --optimize (OpB Sub (Val x) (Val y)) = Val (x - y)
-  --optimize (OpB Sub a (Val 0))       = optimize a
-  --optimize (OpB Mul (Val x) (Val y)) = Val (x * y)
-  --optimize (OpB Mul a (Val 1))       = optimize a
-  --optimize (OpB Mul (Val 1) a)       = optimize a
-  --optimize (OpB Div (Val x) (Val y)) = Val (cast ((cast x) / (cast y)))
-  --optimize (OpB Div a (Val 1))       = optimize a
-  --optimize (OpB o   a       b)       = OpB o (optimize a) (optimize b)
+  optimize (OpB Add (Val a) (Val b)) = Val (a + b)
+  optimize (OpB Add a       (Val 0)) = optimize a
+  optimize (OpB Add (Val 0) a)       = optimize a
+  optimize (OpB Add x       y)       = OpB Add (optimize x) (optimize y)
+  optimize (OpB Sub (Val x) (Val y)) = Val (x - y)
+  optimize (OpB Sub a       (Val 0)) = optimize a
+  optimize (OpB Sub x       y)       = OpB Sub (optimize x) (optimize y)
+  optimize (OpB Mul (Val x) (Val y)) = Val (x * y)
+  optimize (OpB Mul a       (Val 1)) = optimize a
+  optimize (OpB Mul (Val 1) a)       = optimize a
+  optimize (OpB Mul x       y)       = OpB Mul (optimize x) (optimize y)
+  optimize (OpB Div (Val x) (Val y)) = Val (cast ((cast x) / (cast y)))
+  optimize (OpB Div a       (Val 1)) = optimize a
+  optimize (OpB Div x       y)       = OpB Div (optimize x) (optimize y)
   optimize (Lam e)                   = Lam (optimize e)
   optimize (OpU Nay (OpU Nay a))     = optimize a
   optimize (OpU o   a)               = OpU o (optimize a)
@@ -90,6 +77,10 @@ using (G: Vect n Tip)
   optimize (Fst p)                   = Fst (optimize p)
   optimize (Snd p)                   = Snd (optimize p)
   optimize (Pair    fst    snd)      = Pair (optimize fst) (optimize snd)
+  optimize (InL e b)                 = InL (optimize e) b
+  optimize (InR e a)                 = InR (optimize e) a
+  optimize (Case s e1 e2)            = Case (optimize s) (optimize e1) (optimize e2)
+  optimize (Fix e)                   = Fix (optimize e)
   optimize a                         = a
 
   partial -- We think it is total, but the totality checker disagrees
