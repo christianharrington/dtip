@@ -2,18 +2,15 @@
 \section{Stack Machine}
 \label{sec:stack-machine}
 Now that we have a well-typed expression language, we would like to be able to compile and execute it. This means we need a compiler to translate the expression language to instructions, and a stack machine to run these instructions.
-
-\subsection{Standard Stack Machine}
-A minimal stack machine needs only a few components: a list of instructions, a program counter (PC), a stack, and a stack pointer (SP). The program counter records how far into the array of instructions we are, and the stack pointer points to the topmost element of the stack. As each instruction is evaluated, the stack is manipulated and the program counter is increased. The instructions are usually encoded using postfix notation. For example, if you want to add the constants 3 and 4 together, the instructions required would be: [PUSH 3, PUSH 4, ADD]. The first two instructions push the constants onto the stack, and the third instruction adds them together, and leaves the result on the stack.
+\\
+A minimal stack machine needs only a few components: a list of instructions, a program counter (PC), a stack, and a stack pointer (SP). The program counter records how far into the array of instructions we are, and the stack pointer points to the topmost element of the stack. As each instruction is executed, the stack is manipulated and the program counter is increased. The instructions are usually evaluated postfix. For example, if you want to add the constants 3 and 4 together, the instructions required would be: [PUSH 3, PUSH 4, ADD]. The first two instructions push the constants onto the stack, and the third instruction adds them together, and leaves the result on the stack. Thus the stack effect of the PUSH instruction is to consume two values from the stack, and leave one value.
 
 \subsubsection{Problems}
-In most implementations, the stack machine is not in it self very safe. It is up to the compiler to make sure all the instructions are correct. But there is nothing in the program representation or the stack machine stopping the compiler from producing impossible programs. For example, the program [PUSH 3, ADD] will result in a stack underflow error, as the ADD instruction is expecting 2 values on the stack.
+In most implementations, the stack machine is not in it self very safe; it simply executes the instructions it encounters. For example, running the program [PUSH 3, ADD] with an empty stack will result in a stack underflow error, as the ADD instruction is expecting 2 values on the stack. It is up to the compiler to make sure all the instructions are correct. Unfortunately, most compilers are not accompanied by a proof of correctness. Instead they are thoroughly tested. As a consequence, even if you have proved the correctness of your program, as soon as you compile it with an unverified compiler, you lose all assurances. \cite{Leroy_formalverification}
 
 \subsection{Desired Qualities}
-Since our expression language is safe, we would like our compiled programs to retain as much of that safety as possible. In this case, we will ensure the compiler can never produce a program with stack underflow errors.
+While it is beyond the scope of this project to produce a fully verified compiler and stack machine, we can use dependent types to make certain guarantees about the compiler, the programs it produces, and the stack machine that runs the programs.. Specifically, we would like a program representation that encodes the stack effect of the instructions that comprise it, and a stack machine that only accepts such a \textit{well-stacked} program that will run with an empty stack.
 
-% What would we like in our stack machine. Our language is safe -> our bytecode should be safe. We can do this with DT
-% Christian
 \input{sections/program_representation}
 \input{sections/compile}
 \subsection{Run}
