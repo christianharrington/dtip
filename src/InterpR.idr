@@ -111,16 +111,38 @@ using (G: Vect n Tip)
     weakenN {n=n} i Z = rewrite plusZeroRightNeutral n in i
     weakenN {n=n} i (S m') = rewrite sym (plusSuccRightSucc n m') in weaken (weakenN i m')
 
-    --vectAppAssoc : (E: Vect m Tip) -> (F: Vect n Tip) -> (G: Vect o Tip) -> (E ++ F) ++ G = E ++ (F ++ G)
+
+    dreplace : {i : Type} -> {a : i -> Type} -> {s : i} -> {r : i} -> 
+               (x : a s) -> (y : a r) -> (P : (t : i) -> a t -> Type) ->
+               x = y -> P _ x -> P _ y 
+    dreplace x x P refl p = p 
+  
+    vnil_lemma : (xs : Vect n a) -> xs = (xs ++ []) 
+    vnil_lemma [] = refl 
+    vnil_lemma {a} (x :: xs) = let ih = vnil_lemma xs in dreplace {a = \n => Vect n a} xs (xs ++ []) (\n, v : Vect n a => x :: xs = x :: v) ih refl
+
+    -- hasTypeAppendNil : (G: Vect n Tip) -> (G = G++[]) -> (x: HasType i G t) -> (y: HasType i (G++[]) t) -> x = (dreplace {a=\G => HasType i G t} G (G++[]) (\G, z: HasType i G t => x = z) (vnil_lemma G) x)
+    -- hasTypeAppendNil [] x y = dreplace {a=\G => HasType i G t} [] ([]++[]) (\G, z: HasType i G t => x = z) (vnil_lemma []) x
+    -- hasTypeAppendNil (x::xs) x y = ?hatn
+
+    --vassoc_lemma : (xs: Vect m a) -> (ys: Vect n a) -> (zs: Vect o a) -> xs ++ (ys ++ zs) = (xs ++ ys) ++ zs
+    --vassoc_lemma [] ys xs = refl
+    --vassoc_lemma {a} (x :: xs) ys zs = let ih = vassoc_lemma xs ys zs in dreplace {a = \n => Vect n a} (xs ++ (ys ++ zs)) ((xs ++ ys) ++ zs)
+    --                                                                              (\n, v : Vect n a => ((x::xs)++(ys++zs)) = (((x :: v)++ys)++zs)) ih refl
 
     append' : {i: Fin n} -> {G: Vect n Tip} -> HasType i G t -> (t': Tip) -> Exists (Fin (n+1)) (\k => HasType k (G ++ [t']) t)
     append' {i=fZ} stop t' = (fZ ** stop)
     append' (pop x) t' with (append' x t')
       | (k ** x') = (fS k ** pop x')
 
+    appendNil : {i: Fin n} -> {G: Vect n Tip} -> HasType i G t -> Exists (Fin (n+0)) (\k => HasType k (G++[]) t)
+    appendNil {i=fZ} stop = (fZ ** stop)
+    appendNil (pop x) with (appendNil x)
+      | (k ** x') = (fS k ** pop x')
+
     append : {E: Vect m Tip} -> HasType i E t -> (G: Vect n Tip) -> Exists (Fin (m+n)) (\k => HasType k (E ++ G) t)
-    append {i=i} x [] = (i ** x)
-    append x (t' :: G') = let (k ** x') = append' x t' in append x' G'
+    append {E=E} {i=i} x [] = appendNil x
+    append x (t' :: G') = let (k ** x') = append' x t' in append x' G' 
 
     prepend : {G: Vect n Tip} -> HasType i G t -> (E: Vect m Tip) -> Exists (Fin (m+n)) (\k => HasType k (E ++ G) t)
     prepend {i=i} x [] = (i ** x)
@@ -165,7 +187,8 @@ using (G: Vect n Tip)
     subst (Val i') i v = Val i'
     subst (Boo b) i v = Boo b
     subst {Glam=Glam} {Gglob=Gglob} (Var y) i v = case splitVar y of
-                                                    Left (k ** y')  => weaken {E=Glam} {G=[]} (tail Gglob) (Var y') -- Extend env of y' with Gglob
+                                                    Left (k ** y')  => let (k' ** y'') = appendNil y' in
+                                                                        weaken {E=Glam} {G=[]} (tail Gglob) (Var y'') -- Extend env of y' with Gglob
                                                     Right (k ** y') => weaken {E=[]} Glam (substGlobal y' i v) -- v or tail y'
     subst {Glam=Glam} {t=TipFun x y} (Lam b) i v = Lam $ subst {Glam = x :: Glam} b i v
     subst (App f x) i v = App (subst f i v) (subst x i v)
