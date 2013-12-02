@@ -1,7 +1,15 @@
 %!TEX root = ../main.tex
 \section{Stack Machine}
 \label{sec:stack-machine}
-Now that we have a well-typed expression language, we would like to be able to compile and execute it. This means we need a compiler to translate the expression language to instructions, and a stack machine to run these instructions.
+
+% - Hvad er en stack machine?
+% - Udfordringer
+% - Løsninger
+% - Program representation
+% - Compilation
+% - Execution
+
+Now that we have a well-typed expression language, we would like to be able to compile and execute it. This means we need a compiler to translate the expression language to instructions, and a  machine to run these instructions.
 \\
 A minimal stack machine needs only a few components: a list of instructions, a program counter (PC), a stack, and a stack pointer (SP). The program counter records how far into the array of instructions we are, and the stack pointer points to the topmost element of the stack. As each instruction is executed, the stack is manipulated and the program counter is increased. The instructions are usually evaluated postfix. For example, if you want to add the constants 3 and 4 together, the instructions required would be: [PUSH 3, PUSH 4, ADD]. The first two instructions push the constants onto the stack, and the third instruction adds them together, and leaves the result on the stack. Thus the stack effect of the PUSH instruction is to consume two values from the stack, and leave one value.
 
