@@ -1,9 +1,9 @@
 {
-	"folders":
-	[
-		{
-			"path": "./",
-      "file_exclude_patterns": ["*.ibc", ".floo*"]
-		}
-	]
+  "folders":
+  [
+    {
+      "path": "./",
+      "file_exclude_patterns": ["*.ibc", ".floo*", "*.aux", "*.bbl", "*.blg", "*.fdb*", "*.gz"]
+    }
+  ]
 }
