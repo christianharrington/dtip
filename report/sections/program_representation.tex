@@ -1,7 +1,70 @@
 %!TEX root = ../main.tex
 \subsection{Program Representation}
-% How can a program be represented
-% Sune
+% Stack machines classic structure
+One way of encoding the stack effect of a program into its type is by using dependent types. Since a dependent type can be indexed by values, we can let our program type be indexed by its stack effect. This raises the question: What exact behaviour do we need to reason about? In order to find this we must examine our aforementioned problems with a regular stack machine. Considering the problem of stack underflow this can be avoided by letting a program be indexed by the amount of items it will consumes from a stack:
+
+\begin{prooftree}
+\AxiomC{n : $\mathbb{N}$}
+\UnaryInfC{Prog $n$ : $\star$}
+\end{prooftree}
+
+Represnting programs with this type allows us to write an invariant for running the program enforcing that a Prog $n$ cannot be run on a stack with less than $n$ elements. This does not encode what kind of stack a program produces. This may not seem important at first, but if we wish to run two programs consecutively we must know the size of the stack the first program produces in order to run the second program safely. Therefore our program type must also be indexed by what it leaves on the stack:
+
+\begin{prooftree}
+\AxiomC{n, m : $\mathbb{N}$}
+\UnaryInfC{Prog $n$ $m$ : $\star$}
+\end{prooftree}
+
+With this type we can expand our invariant to not only enforce the requirements of running a program, but also include the size of the stack after running the program. This definition of programs is also useful for merging two programs into one. If the first program leaves enough elements on the stack for the second one to run immediately after, we can merge the two programs together:
+
+\begin{prooftree}
+\AxiomC{n, m, o : $\mathbb{N}$}
+\AxiomC{Prog $n$ $m$ : $\star$}
+\AxiomC{Prog $m$ $o$ : $\star$}
+\TrinaryInfC{Prog $n$ $o$ : $\star$}
+\end{prooftree}
+
 \subsubsection{Instructions}
-% How are instructions represented
-% Sune
+A program consists of instructions for the stack machine to execute. Since the type of a program is indexed by its effect on the stack, instructions must also be indexed by its effect. For example the instruction for pushing an element on the stack (PUSH) does not require an element on the stack and leaves one element, whereas the instruction for adding two numbers (ADD) will consume two elements from the stack and leave one. 
+
+\begin{figure}
+\centering{
+\begin{tabu}{ r c }
+  \infrule[where]{n, m : \mathbb{N}}{
+      	Inst\;n\;m : \star
+    } & \infrule[]{i : \mathbb{R}}{
+      	PUSH\;i : Inst\;n\;(n+1)
+    }\\ & \\
+    &
+    \infrule[]{}{
+      	ADD : Inst\;(n+2)\;(n+1)
+    } \\
+    & \vdots \\
+\end{tabu}
+}
+\caption{An incomplete list of instruction constructors.}
+\label{fig:inst_def}
+\end{figure}
+
+In Figure \ref{fig:inst_def} a subset of the constructors for instructions is listed, namely the constructors for the PUSH and ADD instructions discussed above. It is worth noting that a specific instruction does not dictate an actual stack effect, but rather a change. This for example means that while push does not require any elements on the stack, it is still a viable instruction if there are elements on the stack.
+
+\subsubsection{Constructing a Program} 
+Since a program is a series of instruction we use a vector-like way of constructing programs (see Figure \ref{fig:prog_def}). An empty program ($\epsilon$) is a program that does not change the stack. Adding an instruction to an existing program ($::$) will construct a new program parametrised by the instructions stack consumption and the programs stack production. Since instruction indices are universally quantified any instruction will fit on any program, but the type of the program constructed will reflect the new stack effect. This means that it is possible to construct programs that will cause stack underflow, but this will be present in the type, hence the stack machine can require a supplied stack of a sufficient size to avoid this underflow. This will be further discussed in section \ref{sec:running_a_program}.
+
+\begin{figure}
+\centering{
+\begin{tabu}{ r c }
+  \infrule[where]{n, m : \mathbb{N}}{
+      	Prog\;n\;m : \star
+    } & \infrule[]{}{
+      	\epsilon : Prog\;n\;n
+    }\\ & \\
+    &
+    \infrule[]{i : Inst\;n\;m \;\;\; p : Prog\;m\;o}{
+      	i :: p : Prog\;n\;o
+    } \\
+\end{tabu}
+}
+\caption{The data constructor for a program.}
+\label{fig:prog_def}
+\end{figure}
