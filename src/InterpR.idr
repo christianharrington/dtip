@@ -83,7 +83,7 @@ using (G: Vect n Tip)
     V_Unit : Value G U
     V_Int  : Value G (Val i)
     V_Bool : Value G (Boo b)
-    V_Lam  : (b: Expr (t :: G) t') -> Value G (Lam b) -- Note: body does not need to be a value
+    V_Lam  : {b: Expr (t :: G) t'} -> Value G (Lam b) -- Note: body does not need to be a value
     V_Pair : {a: Expr G t} -> {b: Expr G t'} -> Value G a -> Value G b -> Value G (Pair a b)
     V_InL  : {a: Expr G t} -> Value G a -> (b: Tip) -> Value G (InL a b)
     V_InR  : {b: Expr G t} -> Value G b -> (a: Tip) -> Value G (InR b a)
@@ -97,74 +97,6 @@ using (G: Vect n Tip)
       | Left (i' ** x')  = Left (fS i' ** pop x')
       | Right (i' ** x') = Right (i' ** x')
 
-    data SnocView : Vect n a -> Type where
-      sNil : {a: Type} -> SnocView {a=a} Nil
-      Snoc : (xs: Vect n a) -> (x: a) -> SnocView (xs ++ [x])
-
-    snoc : (xs: Vect n a) -> SnocView xs
-    snoc [] = sNil
-    snoc (x :: xs) with (snoc xs)
-     snoc (x :: []) | sNil = Snoc Nil x
-     snoc (x :: (ys ++ [y])) | Snoc ys y = Snoc (x :: ys) y
-
-    -- weakenN : (i : Fin n) -> (m: Nat) -> Fin (n + m)
-    -- weakenN {n=n} i Z = rewrite plusZeroRightNeutral n in i
-    -- weakenN {n=n} i (S m') = rewrite sym (plusSuccRightSucc n m') in weaken (weakenN i m')
-
-
-    dreplace : {i : Type} -> {a : i -> Type} -> {s : i} -> {r : i} -> 
-               (x : a s) -> (y : a r) -> (P : (t : i) -> a t -> Type) ->
-               x = y -> P _ x -> P _ y 
-    dreplace x x P refl p = p 
-  
-    vnil_lemma : (xs : Vect n a) -> xs = (xs ++ []) 
-    vnil_lemma [] = refl 
-    vnil_lemma {a} (x :: xs) = let ih = vnil_lemma xs in dreplace {a = \n => Vect n a} xs (xs ++ []) (\n, v : Vect n a => x :: xs = x :: v) ih refl
-
-    -- hasTypeAppendNil : (G: Vect n Tip) -> (G = G++[]) -> (x: HasType i G t) -> (y: HasType i (G++[]) t) -> x = (dreplace {a=\G => HasType i G t} G (G++[]) (\G, z: HasType i G t => x = z) (vnil_lemma G) x)
-    -- hasTypeAppendNil [] x y = dreplace {a=\G => HasType i G t} [] ([]++[]) (\G, z: HasType i G t => x = z) (vnil_lemma []) x
-    -- hasTypeAppendNil (x::xs) x y = ?hatn
-
-    --vassoc_lemma : (xs: Vect m a) -> (ys: Vect n a) -> (zs: Vect o a) -> xs ++ (ys ++ zs) = (xs ++ ys) ++ zs
-    --vassoc_lemma [] ys xs = refl
-    --vassoc_lemma {a} (x :: xs) ys zs = let ih = vassoc_lemma xs ys zs in dreplace {a = \n => Vect n a} (xs ++ (ys ++ zs)) ((xs ++ ys) ++ zs)
-    --                                                                              (\n, v : Vect n a => ((x::xs)++(ys++zs)) = (((x :: v)++ys)++zs)) ih refl
-
-    --hasTypeAppendAssoc : {E: Vect m Tip, F: Vect n Tip, G: Vect o Tip} -> (x: HasType i (E ++ (F ++ G)) t) -> (y: HasType i ((E ++ F) ++ G)) -> x = y
-
-    vectTailReplace : (as : Vect m t) -> (bs : Vect n t) -> (aseqbs : as = bs) -> (a : t) -> a :: as = a :: bs
-    vectTailReplace as as refl a = refl
-
-    vassoc_lemma : (xs: Vect m a) -> (ys: Vect n a) -> (zs: Vect o a) -> xs ++ (ys ++ zs) = (xs ++ ys) ++ zs
-    vassoc_lemma [] ys xs = refl
-    vassoc_lemma {a} {m=S m} {n} {o} (x :: xs) ys zs = vectTailReplace (xs ++ (ys ++ zs)) ((xs ++ ys) ++ zs) (vassoc_lemma xs ys zs) x
-
-    -- append' : {i: Fin n} -> {G: Vect n Tip} -> HasType i G t -> (t': Tip) -> Exists (Fin (n+1)) (\k => HasType k (G ++ [t']) t)
-    -- append' {i=fZ} stop t' = (fZ ** stop)
-    -- append' (pop x) t' with (append' x t')
-    --   | (k ** x') = (fS k ** pop x')
-
-    -- appendNil : {i: Fin n} -> {G: Vect n Tip} -> HasType i G t -> Exists (Fin (n+0)) (\k => HasType k (G++[]) t)
-    -- appendNil {i=fZ} stop = (fZ ** stop)
-    -- appendNil (pop x) with (appendNil x)
-    --   | (k ** x') = (fS k ** pop x')
-
---    appendAppToCons : HasType i ((G++[t'])++G') t -> HasType (G++(t'::G')) t
---    appendAppToCons x = x 
-
-    -- append : {E: Vect m Tip} -> HasType i E t -> (G: Vect n Tip) -> Exists (Fin (m+n)) (\k => HasType k (E ++ G) t)
-    -- append {E=E} {i=i} x [] = appendNil x
-    -- append {E} x (t' :: G') = let (k ** x') = append' x t' in append x' G
-
-    -- append : {E: Vect m Tip} -> HasType i E t -> (G: Vect n Tip) -> Exists (Fin (m+n)) (\k => HasType k (E ++ G) t)
-    -- append {E=E} {i=fZ} stop [] = (fZ ** stop)
-    -- append (pop x) (t' :: G') = let (k ** x') = append' x t' in append x' G'
-
-    -- weakenHasType : {E: Vect m Tip, G: Vect n Tip} -> HasType i (E ++ G) t -> (F: Vect o Tip) -> Exists (Fin (m+o+n)) (\k => HasType k (E ++ F ++ G) t)
-    -- weakenHasType {m=m} {n=n} {o=o} {E=E} {G=G} x F = case splitVar x of
-    --                                                     Left (k ** x')  => append (append x' F) G
-    --                                                     Right (k ** x') => let (k' ** x'') = prepend x' F in prepend x'' E
-
     weakenN : (n : Nat) -> (m : Nat) -> Fin n -> Fin (n + m)
     weakenN (S n) m fZ = fZ
     weakenN (S n) m (fS f) = fS (weakenN n m f)
@@ -173,19 +105,21 @@ using (G: Vect n Tip)
     append stop G = stop
     append (pop ht) G = pop (append ht G)
 
-    prepend : {G: Vect n Tip} -> HasType i G t -> (E: Vect m Tip) -> Exists (Fin (m+n)) (\k => HasType k (E ++ G) t)
-    prepend {i=i} x [] = (i ** x)
-    prepend x ts with (snoc ts)
-      prepend x [] | sNil = prepend x []
-      prepend x (ys ++ [y]) | Snoc ys y = prepend (pop {u=y} x) ys
+    shiftFin : (m : Nat) -> Fin n -> Fin (m + n)
+    shiftFin Z f = f
+    shiftFin {n=n} (S m) f = fS {k = (m + n)} (shiftFin m f)
+
+    prepend : {G: Vect n Tip} -> HasType i G t -> (E: Vect m Tip) -> HasType (shiftFin m i) (E ++ G) t
+    prepend ht [] = ht
+    prepend ht (t::ts) = pop (prepend ht ts)
 
     weaken : {E: Vect m Tip, G: Vect n Tip} -> (F: Vect o Tip) -> Expr (E ++ G) t -> Expr (E ++ F ++ G) t
     weaken F U = U 
     weaken F (Val i) = Val i
     weaken F (Boo b) = Boo b
-    weaken {G} F (Var x) = case splitVar x of
-                         Left (k ** x') => Var $ append (append x' F) G
-                         Right (k ** x') => let (k' ** x'') = prepend x' F in prepend x'' E
+    weaken {E} {G} F (Var x) = case splitVar x of
+                                 Left (k ** x') => Var $ append (append x' F) G
+                                 Right (k ** x') => Var $ prepend x' (E++F)
     weaken {t=TipFun x y} {E=E} F (Lam b) = Lam $ weaken {E=x::E} F b
     weaken F (App f v) = App (weaken F f) (weaken F v)
     weaken F (If c tb fb) = If (weaken F c) (weaken F tb) (weaken F fb)
@@ -194,7 +128,7 @@ using (G: Vect n Tip)
     weaken F (Snd p) = Snd $ weaken F p
     weaken F (InL a b) = InL (weaken F a) b
     weaken F (InR b a) = InR (weaken F b) a
-    weaken F {E=E} (Case {a=a} {b=b} s l r) = Case (weaken F s) (weaken {E=a::E} F l) (weaken {E=b::E} F r)
+    weaken F {E} (Case {a} {b} s l r) = Case (weaken F s) (weaken {E=a::E} F l) (weaken {E=b::E} F r)
     weaken F (OpU o a) = OpU o $ weaken F a
     weaken F (OpB o a b) = OpB o (weaken F a) (weaken F b)
     weaken F (Fix f) = Fix $ weaken F f
@@ -208,10 +142,10 @@ using (G: Vect n Tip)
     subst U i v = U
     subst (Val i') i v = Val i'
     subst (Boo b) i v = Boo b
-    subst {Glam=Glam} {Gglob=Gglob} (Var y) i v = case splitVar y of
-                                                    Left (k ** y')  => Var $ append y' (tail Gglob) -- Local var: Extend env of y' with Gglob
-                                                    Right (k ** y') => weaken {E=[]} Glam (substGlobal y' i v) -- v or tail y'
-    subst {Glam=Glam} {t=TipFun x y} (Lam b) i v = Lam $ subst {Glam = x :: Glam} b i v
+    subst {Glam} {Gglob} (Var y) i v = case splitVar y of
+                                         Left (k ** y')  => Var $ append y' (tail Gglob) -- Local var: Extend env of y' with Gglob
+                                         Right (k ** y') => weaken {E=[]} Glam (substGlobal y' i v) -- v or tail y'
+    subst {Glam} {t=TipFun x y} (Lam b) i v = Lam $ subst {Glam = x :: Glam} b i v
     subst (App f x) i v = App (subst f i v) (subst x i v)
     subst (If c tb fb) i v = If (subst c i v) (subst tb i v) (subst fb i v)
     subst (Pair a b) i v = Pair (subst a i v) (subst b i v)
@@ -219,7 +153,7 @@ using (G: Vect n Tip)
     subst (Snd p) i v = Snd (subst p i v)
     subst (InL a b) i v = InL (subst a i v) b
     subst (InR b a) i v = InR (subst b i v) a
-    subst {Glam=Glam} (Case {a=a} {b=b} s l r) i v = Case (subst s i v) (subst {Glam=a::Glam} l i v) (subst {Glam=b::Glam} r i v)
+    subst {Glam} (Case {a} {b} s l r) i v = Case (subst s i v) (subst {Glam = a :: Glam} l i v) (subst {Glam = b :: Glam} r i v)
     subst (OpU o a) i v = OpU o (subst a i v)
     subst (OpB o a b) i v = OpB o (subst a i v) (subst b i v)
     subst (Fix f) i v = Fix (subst f i v)
@@ -233,10 +167,9 @@ using (G: Vect n Tip)
                   Value G f ->
                   Step t2 t2' ->
                   Step (App f t2) (App f t2')
---      S_AppBeta : {v: Expr G t, b: Expr (t :: G) t', b': Expr G t'} ->
---                  Value G v ->
-                  --Subst stop v b b' ->
- --                 Step (App (Lam b) v) (subst b stop v) -- App (Lam b) v -> {Var stop -> v} b
+      S_AppBeta : {v: Expr G t, b: Expr (t :: G) t', b': Expr G t'} ->
+                  Value G v ->
+                  Step (App (Lam b) v) (subst {Glam=[]} b stop v) -- App (Lam b) v -> {Var stop -> v} b
       -- If
       S_IfCond  : {c: Expr G TipBool, c': Expr G TipBool, tb: Expr G t, fb: Expr G t} ->
                   Step c c' ->
@@ -285,9 +218,8 @@ using (G: Vect n Tip)
       S_Fix    : {f: Expr G (TipFun t t), f': Expr G' (TipFun t t)} ->
                  Step f f' ->
                  Step (Fix f) (Fix f')
---      S_FixBeta : {b: Expr (t :: G) t, b': Expr G t} ->
-                  --Subst stop (Fix (Lam b)) b b' ->
---                  Step (Fix (Lam b)) (subst b stop (Fix (Lam b)))
+      S_FixBeta : {b: Expr (t :: G) t, b': Expr G t} ->
+                  Step (Fix (Lam b)) (subst {Glam=[]} b stop (Fix (Lam b)))
       -- Operators
       S_Add1    : {e1: Expr G TipInt, e1': Expr G TipInt, e2: Expr G TipInt} ->
                   Step e1 e1' ->
@@ -342,7 +274,7 @@ using (G: Vect n Tip)
                       (Val 1) -- then 1
                       (OpB Mul (Var stop) (App (Var (pop stop)) (OpB Sub (Var stop) (Val 1))))))) -- else (x * f (x - 1))
 
-    testFact : MultiStep {G = Nil} {G' = Nil} (App fact (Val 3)) (Val 6)
+    testFact : MultiStep {G = Nil} {G' = Nil} (App fact (Val 1)) (Val 1)
     testFact = ?testfact
     
 
@@ -387,5 +319,55 @@ using (G: Vect n Tip)
   add' : Expr Nil (TipFun TipInt (TipFun TipInt TipInt))
   add' = expr (\x => (\y => OpB Add x y))
 
+
+
+
+---------- Proofs ----------
+
+InterpR.testif = proof
+  refine S_AppBeta
+  refine V_Bool
+  exact (Val 1)
+
+
+InterpR.testfact = proof
+  refine Multi_Step
+  refine S_App1
+  refine S_FixBeta
+  refine Multi_Step
+  refine S_AppBeta
+  refine V_Int
+  refine Multi_Step
+  refine S_IfCond
+  refine S_Eql
+  refine Multi_Step
+  refine S_IfFalse
+  refine Multi_Step
+  refine S_Mul2
+  refine S_App1
+  refine S_FixBeta
+  refine Multi_Step
+  refine S_Mul2
+  refine S_App2
+  refine V_Lam
+  refine S_Sub
+  refine Multi_Step
+  refine S_Mul2
+  refine S_AppBeta
+  refine V_Int
+  refine Multi_Step
+  refine S_Mul2
+  refine S_IfCond
+  refine S_Eql
+  refine Multi_Step
+  refine S_Mul2
+  refine S_IfTrue
+  refine Multi_Step
+  refine S_Mul
+  refine Multi_Refl
+  refine fact
+  exact (Val 1)
+  refine fact
+  exact (Val 1)
 
 
