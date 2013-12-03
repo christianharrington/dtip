@@ -24,6 +24,7 @@ mutual
    lBoo  : Bool -> InfTerm
    lFst  : InfTerm -> InfTerm
    lSnd  : InfTerm -> InfTerm
+   lFix  : InfTerm -> InfTerm
 
  data BinOp : Type where
    Plus   : CheckTerm -> CheckTerm -> BinOp
@@ -55,7 +56,7 @@ exprTipEqSwap t t' G (Yes p) e = Just ?exprTipEqSwapYescase
 exprTipEqSwap t t' G (No  p) e = Nothing
 
 mutual
-  partial
+  %assert_total
   check : CheckTerm -> (G: Vect n Tip) -> (t: Tip) -> Maybe (Expr G t)
   check (lInf iterm) G t             = do (t' ** e) <- infer iterm G
                                           expr <- exprTipEqSwap t' t G (decEq t' t) e -- Swap t with t'
@@ -99,7 +100,7 @@ mutual
                                           return $ OpB Lt leftOp rightOp
   check _ _ _                        = Nothing
 
-  partial
+  %assert_total
   infer : InfTerm -> (G: Vect n Tip) -> Maybe (t: Tip ** Expr G t)
   infer (lAnno cterm t) G     = do expr <- check cterm G t
                                    return (_ ** expr)
@@ -116,6 +117,8 @@ mutual
                                    return (_ ** Fst p')
   infer (lSnd p) G            = do (TipProd a b ** p') <- infer p G
                                    return (_ ** Snd p')
+  infer (lFix f) G            = do (TipFun t t ** f') <- infer f G
+                                   return (_ ** Fix f')
   infer _ _                   = Nothing
 
 
