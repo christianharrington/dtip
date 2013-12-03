@@ -20,10 +20,10 @@ mutual
     Nil  : Prog s s
     (::) : Inst s s' -> Prog s' s'' -> Prog s s''
 
+infixr 10 +++
 (+++) : Prog s s' -> Prog s' s'' -> Prog s s''
 (+++) Nil p2       = p2
 (+++) (i :: p1) p2 = i :: ((+++) p1 p2)
-infixr 10 +++
 
 partial -- We think it's total
 {-
