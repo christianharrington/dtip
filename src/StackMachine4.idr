@@ -79,18 +79,20 @@ using (G: Vect n Tip)
   data Eff : Type where
     Inc  : Nat -> Eff
     Dec  : Nat -> Eff
-    Flat : Eff
+    Flat :        Eff
 
   getProg : Nat -> Eff -> Type
   getProg n (Inc m) = Prog n (S (m + n))
   getProg n (Dec m) = Prog (S (m + n)) n
   getProg n Flat    = Prog n n
 
-  partial
   getEff : Tip -> Eff
-  getEff TipUnit = Flat
-  getEff TipInt  = Inc 0
-  getEff TipBool = Inc 0
+  getEff TipUnit        = Flat
+  getEff TipInt         = Inc 0
+  getEff TipBool        = Inc 0
+  getEff (TipProd T T') = Inc 1
+  getEff (TipSum T T')  = Inc 1
+  getEff (TipFun T T')  = getEff T'
 
   getTip : Expr G t -> Tip
   getTip {t=t} e = t

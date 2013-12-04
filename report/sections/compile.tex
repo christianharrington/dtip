@@ -1,10 +1,72 @@
 %!TEX root = ../main.tex
 \subsection{Compile}
+With this way of constructing and representing programs we can now start considering how to translate our expression language to this representation. A such function ($compile$) should take an expression (\textit{Expr G t}) from Section~\ref{sec:a-well-typed-expression-language}, and produce a program. Since programs are indexed by their stack effect there should be a correspondence between the stack effect of the returned program and the type of the input expression. This should be expressed by the type of our $compile$ function, for which we need to be able to construct program types with a stack effect based on arbitrary \todo{Might be a bit unclear} conditions. For this we use the follow:
 
-	First version: Expr G t -> Prog s (S s)
-		Function Application
-	Second version: Expr G t -> Vector n (Prog s (S s)) -> Prog s (S s)
-		Programs not ending in +1
-	Third version: Expr G t -> Vector n (Prog s (S s)) -> getProg s (getEff t)
-		No Program Counter
-	Fourth version: ??
+\begin{alltt}
+data Eff : Type where
+	Inc  : Nat \(\rightarrow\)  Eff
+	Dec  : Nat \(\rightarrow\)  Eff
+	Flat :        Eff
+
+getProg : Nat \(\rightarrow\)  Eff \(\rightarrow\)  Type
+getProg n (Inc m) = Prog n (S (m + n))
+getProg n (Dec m) = Prog (S (m + n)) n
+getProg n Flat    = Prog n n
+\end{alltt}
+
+The data type \textit{Eff} represents a change in a value. It can either be increased ($Inc$), decreased ($Dec$), or remain unaltered ($Flat$). This is used to construct a program type with $getProg$, which based on a $Nat\;n$ and an \textit{Eff e} results in a program type requiring n elements, and leaving an amount based on the \textit{Eff} on the stack. It is worth noting that $getProg$ treats the $Inc$ and $Dec$ constructors as being zero indexed. This means that \textit{getProg 0 (Inc 0)} will result in \textit{Prog 0 1}. With this we can construct program types that are based on a starting state and an effect.
+
+In order to use this for constructing programs based on expression types, all we have to do is write a function translating a $Tip$ to an \textit{Eff}:
+
+\begin{alltt}
+getEff : Tip \(\rightarrow\) Eff
+getEff TipUnit        = Flat
+getEff TipInt         = Inc 0
+getEff TipBool        = Inc 0
+getEff (TipProd T T\('\)) = Inc 1
+getEff (TipSum T T\('\))  = Inc 1
+getEff (TipFun T T\('\))  = getEff T\('\)
+\end{alltt}\todo{getEff might be wrong. Make equals signs line up}
+
+With this we can create a type of program based on a $Tip\;t$ requiring $s$ elements with \textit{getProg s (getEff t)}, which allows us to base the result type of our $compile$ function on the type of an expression.
+
+Since our expression language contains lambda functions and applications our $compile$ must be able to remember the applied expression and then substitute it in when appropriate. This means that we need some sort of stack frame to store these expressions. We know that there is a correspondence between the size of the stack frame and the type environment of the expression, so this should be enforced. At first glance a vector of expressions might seem like an obvious solution. However, this does not work as each element in the vector could have a different type. This could be solved by using a $sum\;type$ (or $dependent\;pair$)\,\cite[p. 14]{Brady:IdrisTutorial}, by essentially having the type of each expression being existentially quantified. This, nevertheless, does not seem like an ideal solution. Representing the stack frame as a vector of programs yields the same issue.
+To solve this we must take advantage of another correspondence between the stack frame and the environment. Not only do the two have the same cardinality, \todo{Unclear?}but since our expression language only works on closed terms we know that there is a one to one correspondence between the type in the environment and the type of the expression in the stack frame. We can enforce this statically with the following data type:
+
+\begin{alltt}
+data StackFrame : Vect n Tip -> Nat -> Type where
+	Nill : StackFrame [] Z
+	(:::) : Expr G t -> StackFrame G n -> StackFrame (t :: G) (S n)
+\end{alltt}
+
+With this type a stack frame, the relationship between the expression environment and the type of expressions in the stack frame is enforced. As such, compiling a program means given an expression of type $t$, a stack frame matching the expressions environment, will result in a program matching the stack effect of the type, giving us the signature seen in Figure~\ref{fig:compile_function}. Similar to constructing and appending programs, the $s$ is universally quantified and an implicitly argument, allowing the type checker to find a value for $s$ fitting the effect of the type.
+
+\begin{figure}
+\begin{alltt}
+compile : Expr G t -> StackFrame G n -> getProg s (getEff t)
+compile U                 sf    = StackMachine4.Nil
+compile (Val i)           sf    = [PUSH i]
+compile (Boo True)        sf    = [PUSH 1]
+compile (Boo False)       sf    = [PUSH 0]
+compile (OpU Nay v)       sf    = compile v sf +++ [NAY]
+compile (OpB o v1 v2) sf = compileOp o v1 v2 sf where
+  partial 
+  compileOp : BinOp a b c -> Expr G a -> Expr G b -> 
+                StackFrame G n -> getProg s (getEff c)
+  compileOp Add e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [ADD]
+  compileOp Sub e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [SUB]
+  compileOp Mul e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [MUL]
+  compileOp Div e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [DIV]
+  compileOp Eql e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [EQL]
+  compileOp Lt  e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [LTH]
+compile (If b tb fb) {t} sf with (t)
+  | TipUnit = []
+  | TipBool = compile tb sf +++ compile fb sf +++ compile b  sf +++ [IF]
+  | TipInt  = compile tb sf +++ compile fb sf +++ compile b  sf +++ [IF]
+compile (App (Lam b) e) sf = compile b (e ::: sf)
+compile (Var stop) {G = x :: xs} (e ::: sf) = compile e sf
+compile (Var (pop k)) (e ::: sf) = compile (Var k) sf
+\end{alltt}
+\label{fig:compile_function}
+\caption{Our compile function.}
+\end{figure}
