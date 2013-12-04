@@ -6,3 +6,129 @@
 % - Raw STLC
 % - Regler
 % - Idris representation
+
+\newsavebox{\ptone}
+\begin{lrbox}{\ptone}
+\begin{varwidth}{\linewidth}
+\begin{prooftree}
+\AxiomC{$x : \tau \in \Gamma$}
+\RightLabel{\sc{()}}
+\UnaryInfC{$\Gamma \vdash x \Rightarrow \tau$}
+\end{prooftree}
+\end{varwidth}
+\end{lrbox}
+
+\newsavebox{\pttwo}
+\begin{lrbox}{\pttwo}
+\begin{varwidth}{\linewidth}
+\begin{prooftree}
+\AxiomC{$\Gamma, x : \sigma \vdash e \Leftarrow \tau $}
+\RightLabel{\sc{()}}
+\UnaryInfC{$\Gamma \vdash \lambda x.e \Leftarrow \sigma \to \tau$}
+\end{prooftree}
+\end{varwidth}
+\end{lrbox}
+
+\newsavebox{\ptthree}
+\begin{lrbox}{\ptthree}
+\begin{varwidth}{\linewidth}
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash f \Rightarrow \sigma \to \tau$}
+\AxiomC{$\Gamma \vdash x \Leftarrow \sigma$}
+\RightLabel{\sc{()}}
+\BinaryInfC{$\Gamma \vdash f x \Rightarrow \tau$}
+\end{prooftree}
+\end{varwidth}
+\end{lrbox}
+
+\newsavebox{\ptPairElimOne}
+\begin{lrbox}{\ptPairElimOne}
+\begin{varwidth}{\linewidth}
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash p \Rightarrow \tau_{1} + \tau_{2}$}
+\RightLabel{\sc{(PairElim1)}}
+\UnaryInfC{$\Gamma \vdash$ \texttt{fst} $p \Rightarrow \tau_{1}$}
+\end{prooftree}
+\end{varwidth}
+\end{lrbox}
+
+\newsavebox{\ptPairElimTwo}
+\begin{lrbox}{\ptPairElimTwo}
+\begin{varwidth}{\linewidth}
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash p \Rightarrow \tau_{1} + \tau_{2}$}
+\RightLabel{\sc{(PairElim2)}}
+\UnaryInfC{$\Gamma \vdash$ \texttt{snd} $p \Rightarrow \tau_{2}$}
+\end{prooftree}
+\end{varwidth}
+\end{lrbox}
+
+\newsavebox{\ptSumIntroOne}
+\begin{lrbox}{\ptSumIntroOne}
+\begin{varwidth}{\linewidth}
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash e \Leftarrow \tau_{1}$}
+\RightLabel{\sc{(SumIntro1)}}
+\UnaryInfC{$\Gamma \vdash$ \texttt{InL} $e \Leftarrow \tau_{1} + \tau_{2}$}
+\end{prooftree}
+\end{varwidth}
+\end{lrbox}
+
+\newsavebox{\ptSumIntroTwo}
+\begin{lrbox}{\ptSumIntroTwo}
+\begin{varwidth}{\linewidth}
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash e \Leftarrow \tau_{2}$}
+\RightLabel{\sc{(SumIntro2)}}
+\UnaryInfC{$\Gamma \vdash$ \texttt{InR} $e \Leftarrow \tau_{1} + \tau_{2}$}
+\end{prooftree}
+\end{varwidth}
+\end{lrbox}
+
+\begin{center}
+\begin{figure}
+\label{fig:type-rules}
+
+\begin{tabu}{c c c}
+\usebox{\ptone} & \usebox{\pttwo} & \usebox{\ptthree}
+\end{tabu}
+
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash e \Leftarrow $ \texttt{Bool}}
+\AxiomC{$\Gamma \vdash e_{1} \Leftarrow \tau$}
+\AxiomC{$\Gamma \vdash e_{2} \Leftarrow \tau$}
+\RightLabel{\sc{(IfIntro)}}
+\TrinaryInfC{$\Gamma \vdash$ \texttt{IF} $e$ \texttt{THEN} $e_{1}$ \texttt{ELSE} $e_{2} \Leftarrow \tau$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash e_{1} \Rightarrow \tau_{1}$}
+\AxiomC{$\Gamma \vdash e_{2} \Rightarrow \tau_{2}$}
+\RightLabel{\sc{(PairIntro)}}
+\BinaryInfC{$\Gamma \vdash (e_{1}, e_{2}) \Leftarrow \tau_{1} \times \tau_{2}$}
+\end{prooftree}
+
+\begin{tabu}{c c}
+\usebox{\ptPairElimOne} & \usebox{\ptPairElimTwo}
+\\
+\usebox{\ptSumIntroOne} & \usebox{\ptSumIntroTwo}
+\end{tabu}
+
+
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash e_{1} \Rightarrow \tau_{1} + \tau_{2}$}
+\AxiomC{$\Gamma, x : \tau_{1} \vdash e_{2} \Leftarrow \tau$}
+\AxiomC{$\Gamma, y : \tau_{2} \vdash e_{3} \Leftarrow \tau$}
+\RightLabel{\sc{(SumElim)}}
+\TrinaryInfC{$\Gamma \vdash$ \texttt{Case} $e_{1}$ \texttt{InL} $x \Rightarrow e_{2} | $ \texttt{InR} $y \Rightarrow e_{3} \Leftarrow \tau$}
+\end{prooftree}
+
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash f \Rightarrow \tau \to \tau$}
+\RightLabel{\sc{(Fix)}}
+\UnaryInfC{$\Gamma \vdash$ \texttt{Fix} $f \Rightarrow \tau$}
+\end{prooftree}
+
+\caption{Type rules}
+\end{figure}
+\end{center}
