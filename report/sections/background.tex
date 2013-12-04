@@ -3,9 +3,72 @@
 \label{sec:background}
 
 \subsection{Simply Typed Lambda Calculus}
+\label{sec:stlc}
+The simply typed lambda calculus is a formal system based on the untyped lambda calculus, extending it, as the name implies, with a simple type system. The language itself consists of three terms: \emph{variable}, \emph{abstraction} and \emph{application}, with three simple typing rules (see Figure~\ref{fig:simple-typing-rules})\,\cite[Chapter 9]{Pierce:TypeSystems} \todo{Should we cite chapters?}
+\begin{center}
+\begin{figure}
+\begin{prooftree}
+\AxiomC{x : T $\in \Gamma$}
+\RightLabel{\sc{(T-Var)}}
+\UnaryInfC{$\Gamma \vdash$ x : T}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$\Gamma$, x : T$_{1} \vdash$ t$_{2}$ : T$_{2}$}
+\RightLabel{\sc{(T-Abs)}}
+\UnaryInfC{$\Gamma \vdash \lambda$x : T$_{1}$ . t$_{2}$ : T$_{1} \to$ T$_{2}$}
+\end{prooftree}
+\begin{prooftree}
+\AxiomC{$\Gamma \vdash$ t$_{1}$ : T$_{11} \to $ T$_{_12}$}
+\AxiomC{$\Gamma \vdash$ t : T$_{11}$}
+\RightLabel{\sc{(T-App)}}
+\BinaryInfC{$\Gamma \vdash$ t$_{1}$ t$_{2}$ : T$_{12}$}
+\end{prooftree}
+\label{fig:simple-typing-rules}
+\caption{Typing rules for the simply typed lambda calculus}
+\end{figure}
+\end{center}\todo{The first two rules should probably be on the same line. How?}
+The simply typed lambda calculus will be the foundation of the language presented in the next sections. You will also see several extensions to the calculus, such as the addition of sum and product types.
 
 \subsection{Dependent Types}
+\label{sec:dependent-types-idris}
 % - "Correct by construction"
-% - Extrinsic vs intrinsic
+% - Extrinsic vs intrinsic verification
+In many modern programming languages, types can be parameterized over other types. This is often seen in generic collection types such as \texttt{List A}, where \texttt{A} is the type contained in the list. But in programming languages with dependent types, types can also depend on terms. The classic example is the dependent vector, \texttt{Vect Nat A}, which is \emph{indexed} over a natural number, the length of the list. This means vectors of different lengths are actually different types. The constructors for the vector data type can be seen in Figure~\ref{fig:vect}.
 
-\subsection{Idris}
+\begin{figure}
+\label{fig:vect}
+\begin{alltt}
+data Vect : Nat -> Type -> Type where
+  Nil  : Vect Z a
+  (::) : a -> Vect k a -> Vect (S k) a
+\end{alltt}
+\caption{The vector data type. \texttt{Z} and \texttt{(S k)} are constructors for Nat, where \texttt{Z} represents 0, and \texttt{(S k)} represents the natural number succeeding \texttt{k}. So \texttt{(S (S Z))} represents 2.}
+\end{figure}
+
+When types can depend on values, it becomes possible to build strong invariants into the types themselves, which in turn means that the type checker can be used to find where these invariants do not hold. In Figure~\ref{fig:zip}, a zip function for the dependent vector is defined. It takes two vectors with the length \texttt{n}, and returns a vector with length \texttt{n}. If someone tries to compile a program that tries to zip vectors of different lengths, and therefore different types, the type checker will catch it, and the program will not compile. 
+
+With dependent types, we can write types that are precise enough to serve as specifications for the functions that use them. This allows us to write programs and functions that are \emph{correct by construction}\,\cite[p. 464]{Pierce:TypeSystems}. When a function is correct by construction, it means the type encodes all the invariants we want to hold, and if the type checker agrees that our functions has this type, we have proof that our program lives up to our specification. This is directly related to the Curry-Howard correspondence, which relates logic and type theory. Specifically, logical propositions corresponds to types, and a proof of proposition $P$ corresponds to a term with type $P$.
+
+In the \texttt{zip} function, we have an \emph{intrinsic} proof that the resulting vector is the same length as the two input vectors. It is intrinsic as it is contained in the definition itself. Without dependent types, we would have to have an \emph{extrinsic} proof, a separate proof stating the lengths are the same. Even with dependent types, it can sometimes be easier to weaken the definition, and instead rely on an external proof for correctness. As a final example, we will define the finite set data type \texttt{Fin}, which can be seen in Figure~\ref{fig:fin}.
+
+Dependent types have been implemented in several programming languages, such as Coq\todo{Ref}, Agda\todo{Ref} and, of course, Idris. 
+
+\begin{figure}
+\label{fig:zip}
+\begin{alltt}
+zip : Vect n a -> Vect n b -> Vect n (a, b)
+zip Nil       Nil       = Nil
+zip (x :: xs) (y :: ys) = (x, y) :: zip xs ys
+\end{alltt}
+\caption{Zip function for vectors in Idris. Notice that we do not need to match on the cases where one vector is empty while the other still has elements, as the vectors are of equal length in every iteration.}
+\end{figure}
+
+\begin{figure}
+\label{fig:fin}
+\begin{alltt}
+data Fin : Nat -> Type where
+  fZ : Fin (S k)
+  fS : Fin k -> Fin (S k)
+\end{alltt}
+\caption{\texttt{Fin} represents a finite set with \texttt{(S k)} elements. It can be used to represent bounded natural numbers.}
+\end{figure}
