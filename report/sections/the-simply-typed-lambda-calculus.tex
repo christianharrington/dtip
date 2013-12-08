@@ -6,3 +6,42 @@
 % 	- Virkende
 % 	- Uvirkende (Thomas tvang mig til at skrive dette dårlige ord)
 % - Extensions
+
+Our first task is to define a raw representation of our expression language based on the simply typed lambda calculus. This representation will be similar to those that can be defined in any other language, and will not use dependent types. This is what we mean by ``raw''; there is no more safety in this representation than any other, and can be thought of the output of parser, before any type checking. It can be seen in Figure~\ref{fig:rstlc}.
+
+\begin{center}
+\begin{figure}
+\begin{alltt}
+data Expr : Type where
+  App  : Expr -> Expr -> Expr
+  Boo  : Bool -> Expr
+  Case : Expr -> Expr -> Expr -> Expr
+  Fix  : Expr -> Expr
+  Fst  : Expr -> Expr
+  If   : Expr -> Expr -> Expr -> Expr
+  InL  : Expr -> Expr
+  InR  : Expr -> Expr
+  Lam  : Expr -> Expr
+  OpB  : BinOp -> Expr
+  OpU  : UnOp -> Expr
+  Pair : Expr -> Expr -> Expr
+  Snd  : Expr -> Expr
+  Unit : Expr
+  Val  : Int -> Expr
+  Var  : Nat -> Expr
+\end{alltt}
+\caption{Idris definition of the simply typed lambda calculus.}
+\label{fig:rstlc}
+\end{figure}
+\end{center}
+
+The definition in Figure~\ref{fig:rstlc} includes many terms apart from \texttt{Lam}, \texttt{Var}, and \texttt{App}. These include:
+\begin{itemize}
+\item \texttt{Boo} and \texttt{Val} for representing boolean and integer values, respectively.
+\item \texttt{Case}, \texttt{InL}, and \texttt{InR} for working with sum types.
+\item \texttt{Fix} for defining recursive functions.
+\item \texttt{If} for defining conditional expressions.
+\item \texttt{OpB} and \texttt{OpU} for binary and unary operations.
+\item \texttt{Pair}, \texttt{Fst}, and \texttt{Snd} for working with product types
+\end{itemize}
+Besides these terms, there are datatypes for representing various binary and unary operations, such as \texttt{Plus}, \texttt{Minus} and so on. A very simple function that adds some number to a fixed value can be defined as \texttt{Lam (OpB (Plus (Var 1) (Val 5)))}. The problem with this representation of the simply typed lambda calculus is that it is too permissive. It lets us write completely nonsensical expressions, such as \texttt{Lam (OpB (Plus (Pair (Val 2) (Boo True)) Unit))}. How are you supposed to add the pair $(2, True)$ to unit? Looking past this obviously incorrect example, lets go back to the first example. We have no idea if there is a variable at index 1, or if it does exist, it might be a boolean or some other type that we cannot add to 5. It is clear that with this representation, we will need numerous run time checks to make sure everything is in order. However, in the next section we will see how we can use dependent types to add more information to our expression language, eliminating incorrect cases, and freeing us from run time checks.
