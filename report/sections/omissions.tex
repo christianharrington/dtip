@@ -1,0 +1,17 @@
+%!TEX root = ../main.tex
+\subsection{Omissions}
+\label{sec:omissions}\todo{Update omissions to most recent work before hand-in}
+As previously mentioned our compile function, and thereby our stack machine, does not cover our entire expression language. Specifically sum type, product types, and fixpoints are not handled. 
+
+\paragraph{Sum and Product Types}
+To handle sum and product types, the compiler must compile the entire expression, creating a program containing both branches. As they can contain any type the amount of instructions in each branch can be anything. When running the program, the type of the two branches must be known to determine how many instructions to execute. 
+
+\paragraph{Fixpoints}
+Compiling a fixpoint to a program that is not well-stacked is fairly straight forward. Simply have a \texttt{GOTO} instruction pointing to the start of the fixpoint with a conditional. With our well-stacked machine this is not as simple. Since instructions are indexed by their stack effect, what stack effect would such a \texttt{GOTO} instruction have? Ideally it would have the stack effect of the point in the program it pointed to.
+
+% \paragraph{}Both of these could be solved by if we had a way of construction an instruction with arbitrary indices. If we take a look at the instructions from Figure~\ref{fig:idris_inst_set} we see that while indices are variable, there is an enforced relationship between the two indices.
+
+% With variable instruction effects
+% explain why we can't make instructions with variable indices
+% show how this could solve the problems
+%

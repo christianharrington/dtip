@@ -23,7 +23,7 @@ As previously mentioned a program run by a stack machine is a list of instructio
 \label{fig:inst_set}
 \end{figure}
 
-Looking at this, the problem of stack underflow becomes very apparent. Each instruction seem to have a very specific requirement to the stack and since this is not encoded in the instruction, these stack requirements are enforced on run time rather compile time. Using dependent types, this encoding can be achieved by representing instructions with a type indexed by its required stack.Just indexing instructions by their required stack, however, is not sufficient. When we later want to build programs from our instructions we wish to be able to chain instruction, creating a sequence for the stack machine to run. To be able to do this, an instruction must also be indexed by what it leaves on the stack. 
+Looking at this, the problem of stack underflow becomes very apparent. Each instruction seems to require that very specific arguments are on the stack and since this is not encoded in the instruction, these stack requirements are enforced at run time rather compile time. Using dependent types, this encoding can be achieved by representing instructions with a type indexed by its required stack. Just indexing instructions by their required stack, however, is not sufficient. When we later want to build programs from our instructions we wish to be able to chain instructions, creating a sequence for the stack machine to run. To be able to do this, an instruction must also be indexed by what it leaves on the stack. 
 
 \begin{figure}
 \centering{
@@ -66,13 +66,13 @@ data Inst : Nat \(\rightarrow\) Nat \(\rightarrow\) Type where
 Since the stack effect of an instruction is a minimum effect, these indices must be universally quantified over natural numbers. This universal quantification is expressed in Figure~\ref{fig:idris_inst_set} by that i.e. the PUSH $i$ instruction is Inst s (S s) rather than Inst 0 1 as it seen in Figure~\ref{fig:inst_set_with_effect}. 
 
 \subsubsection{Program Representation}
-To avoid the underflow problem a program must also have its effect encoded. Similar to instruction this encoding can be done by indexing programs by its required stack. Since we also want to be able to chain programs, just like instruction, the resulting stack of running a program must also be encoded into the type. As such a program is indexed by its stack effect:
+To avoid the underflow problem a program must also have its effect encoded. Similar to instruction this encoding can be done by indexing programs by its required stack. Since we also want to be able to chain programs, just like instructions, the resulting stack of running a program must also be encoded into the type. As such a program is indexed by its stack effect:
 
 \begin{alltt}
 data Prog : Nat \(\rightarrow\)  Nat \(\rightarrow\)  Type where
 \end{alltt}
 
-Since a program is a list of instructions the value that programs are indexed by should be dictated by the instructions it contains. This means that when constructing a program it should take base in instructions. To do this we use a structure similar to the one seen from Idris's lists as seen in Figure~\ref{fig:idris_impl_of_prg}. An empty program ($Nil$) is a program that does not change the stack. Adding an instruction to an existing program ($::$) will construct a new program parametrized by the instructions stack consumption and the programs stack production. Since instruction indices are universally quantified any instruction will fit on any program, but the type of the program constructed will reflect the new stack effect. This means that it is possible to construct programs that will cause stack underflow, but this will be present in the type, hence the stack machine can require a supplied stack to be of a sufficient size to avoid this underflow. This will be further discussed in Section~\ref{sec:running_a_program}.
+Since a program is a list of instructions the value that programs are indexed by should be dictated by the instructions it contains. This means that when constructing programs they should take base in the instructions that they contain. To do this we use a structure similar to a list, as seen in Figure~\ref{fig:idris_impl_of_prg}. An empty program ($Nil$) is a program that does not change the stack. Adding an instruction to an existing program ($::$) will construct a new program parametrized by the instructions stack consumption and the programs stack production. Since instruction indices are universally quantified any instruction will fit on any program, but the type of the program constructed will reflect the new stack effect. This means that it is possible to construct programs that will cause stack underflow, but this will be present in the type, hence the stack machine can require a supplied stack to be of a sufficient size to avoid this underflow. This will be further discussed in Section~\ref{sec:running_a_program}.
 
 \begin{figure}
 \begin{alltt}
@@ -80,16 +80,16 @@ data Prog : Nat \(\rightarrow\)  Nat \(\rightarrow\)  Type where
   Nil  : Prog s s
   (::) : Inst s s\('\) \(\rightarrow\)  Prog s\('\) s\('\)\('\) \(\rightarrow\)  Prog s s\('\)\('\)
 \end{alltt}
-\caption{Idris implementation of program}
+\caption{Idris representation of well-stacked programs}
 \label{fig:idris_impl_of_prg}
 \end{figure}
 
-Aside from constructing programs we also need to chain programs. Again we draw on our programs similarities with lists and use a similar name and notation to the $append$ (here $+++$) operation seen in many functional programming languages.
+In addition to constructing programs from scratch, it can also be useful to concatenate them. Again we draw on our programs similarities with lists and use a similar name and notation to the $append$ (here \texttt{+++}) operation seen in many functional programming languages.
 
 \begin{alltt}
 (+++) : Prog s s\('\) -> Prog s\('\) s\('\)\('\) -> Prog s s\('\)\('\)
 (+++) Nil p2       = p2
-(+++) (i :: p1) p2 = i :: ((+++) p1 p2)
+(+++) (i :: p1) p2 = i :: (p1 +++ p2)
 \end{alltt}
 
-The type of $append$ dictates that given two program with stack effects $(s, s')$ and $(s', s'')$ we can construct a program with stack effect $(s, s'')$. Note that in parallel to instructions, the indices of programs are universally quantified. As they are also implicit arguments to the $append$ function, any two programs can be chained together, if the Idris type checker can infer the arguments.
+The type of $append$ dictates that given two programs with stack effects $(s, s')$ and $(s', s'')$ we can construct a program with stack effect $(s, s'')$. As they are also implicit arguments to the $append$ function, any two programs can be chained together, if the Idris type checker can infer the arguments.

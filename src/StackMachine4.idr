@@ -1,8 +1,43 @@
 module StackMachine4
 import Tip
 import Interp
+import NatCmp
 
 %default total
+
+data Eff : Type where
+    Inc  : Nat -> Eff
+    Dec  : Nat -> Eff
+    Flat :        Eff
+
+  %assert_total
+  applyIncEff : Eff -> Nat -> Nat
+  applyIncEff Flat n = n
+  applyIncEff (Inc Z) n = S n
+  applyIncEff (Inc (S m)) n = S (applyIncEff (Inc m) n)
+  applyIncEff (Dec x) n = n
+
+  %assert_total
+  applyDecEff : Eff -> Nat -> Nat
+  applyDecEff Flat n = n
+  applyDecEff (Dec Z) n = S n
+  applyDecEff (Dec (S m)) n = S (applyDecEff (Dec m) n)
+  applyDecEff (Inc x) n = n
+
+  %assert_total
+  effPlus : Eff -> Eff -> Eff
+  effPlus Flat b = b
+  effPlus a Flat = a
+  effPlus (Inc x) (Inc y) = Inc (S (x + y))
+  effPlus (Inc Z) (Dec (S x)) = Dec x
+  effPlus (Inc Z) (Dec Z) = Flat
+  effPlus (Inc (S x)) (Dec (S y)) = effPlus (Inc x) (Dec y)
+  effPlus (Inc (S x)) (Dec Z) = Inc x
+  effPlus (Dec x) (Dec y) = Dec (S (x + y))
+  effPlus (Dec Z) (Inc (S x)) = Inc x
+  effPlus (Dec Z) (Inc Z) = Flat
+  effPlus (Dec (S x)) (Inc (S y)) = effPlus (Dec x) (Inc y)
+  effPlus (Dec (S x)) (Inc Z) = Dec x
 
 mutual
   data Inst : Nat -> Nat -> Type where
@@ -15,6 +50,9 @@ mutual
     LTH  :        Inst (S (S s)) (S s)
     NAY  :        Inst (S s)     (S s)
     IF   :        Inst (S (S (S s))) (S s)
+    --FST  : (f : Eff) -> (s : Eff) -> s 
+    GOTO : (e : Eff) -> Inst (applyDecEff e s) (applyIncEff e s)
+
 
   data Prog : Nat -> Nat -> Type where
     Nil  : Prog s s
@@ -23,7 +61,7 @@ mutual
 infixr 10 +++
 (+++) : Prog s s' -> Prog s' s'' -> Prog s s''
 (+++) Nil p2       = p2
-(+++) (i :: p1) p2 = i :: ((+++) p1 p2)
+(+++) (i :: p1) p2 = i :: (p1 +++ p2)
 
 partial -- We think it's total
 {-
@@ -56,30 +94,12 @@ run (IF     :: is)        (b :: e1 :: e2 :: vs) = let v = case b of
 run []             vs                 = vs
 
 using (G: Vect n Tip)
-  weakenInst : Inst n m -> Inst (S n) (S m)
-  weakenInst (PUSH i) = PUSH i
-  weakenInst ADD  = ADD
-  weakenInst SUB  = SUB
-  weakenInst MUL  = MUL
-  weakenInst DIV  = DIV
-  weakenInst EQL  = EQL
-  weakenInst LTH  = LTH
-  weakenInst NAY  = NAY
-  weakenInst IF   = IF
-
-  weakenProg : Prog n m -> Prog (S n) (S m)
-  weakenProg Nil = Nil
-  weakenProg (instr :: p) = weakenInst instr :: weakenProg p
 
   {-data StackEff : Nat -> Nat -> Type where
     Inc  : {n : Nat} -> (m : Nat) -> StackEff n (m + n)
     Flat : {n : Nat} -> StackEff n n
     Dec  : {n : Nat} -> (m : Nat) -> StackEff (m + n) n-}
 
-  data Eff : Type where
-    Inc  : Nat -> Eff
-    Dec  : Nat -> Eff
-    Flat :        Eff
 
   getProg : Nat -> Eff -> Type
   getProg n (Inc m) = Prog n (S (m + n))
@@ -118,15 +138,16 @@ using (G: Vect n Tip)
     compileOp Div e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [DIV]
     compileOp Eql e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [EQL]
     compileOp Lt  e1 e2 sf = compile e1 sf +++ compile e2 sf +++ [LTH]
-  compile (If b tb fb) {t} sf with (t)
-    | TipUnit = []
-    | TipBool = compile tb sf +++ compile fb sf +++ compile b  sf +++ [IF]
-    | TipInt  = compile tb sf +++ compile fb sf +++ compile b  sf +++ [IF]
+  compile (If b tb fb) {t=TipUnit} sf = []
+  compile (If b tb fb) {t=TipBool} sf = compile tb sf +++ compile fb sf +++ compile b  sf +++ [IF]
+  compile (If b tb fb) {t=TipInt} sf = compile tb sf +++ compile fb sf +++ compile b  sf +++ [IF]
   compile (App (Lam b) e) sf = compile b (e ::: sf)
   compile (Var stop) {G = x :: xs} (e ::: sf) = compile e sf
   compile (Var (pop k)) (e ::: sf) = compile (Var k) sf
-  {-compile (Pair e1 e2) {a} {b} sf with (a, b) 
-    | (TipUnit, TipUnit) = -}
+  
+  --compile (Fst (Var stop)) ((Pair e _) ::: sf) = compile e sf
+  --compile (Fst (Var (pop k)) (e ::: sf)) compile (Fst k) sf
+  
 
   
   test4 : Expr Nil TipInt
@@ -135,6 +156,9 @@ using (G: Vect n Tip)
   partial
   test5 : Prog 0 1
   test5 = compile test4 Nill
+
+  testInst : Prog 0 1
+  testInst = GOTO (getEff TipInt) :: (StackMachine4.Nil)
 
 {-  test4 : Expr Nil TipBool
   test4 = (OpU Nay (Boo True))
