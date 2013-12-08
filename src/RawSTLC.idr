@@ -1,4 +1,4 @@
-module TypeChk
+module RawSTLC
 import Interp
 
 %default total
@@ -52,7 +52,7 @@ natToFinFromVect _     _        = Nothing
 
 -- If t and t' are equal, we can exchange t' for t in the Expr argument
 exprTipEqSwap : (t: Tip) -> (t': Tip) -> (G: Vect n Tip) -> (p: Dec (t = t')) -> Expr G t -> Maybe (Expr G t')
-exprTipEqSwap t t' G (Yes p) e = Just ?exprTipEqSwapYescase
+exprTipEqSwap t t' G (Yes p) e = Just ?exprTipEqSwapCase
 exprTipEqSwap t t' G (No  p) e = Nothing
 
 mutual
@@ -74,9 +74,9 @@ mutual
                                           return $ InL e' t' 
   check (lInR e) G (TipSum t t')     = do e' <- check e G t'
                                           return $ InR e' t
-  check (lCase s l r) G t            = do (TipSum lt rt ** s') <- infer s G
-                                          l'                   <- check l (lt :: G) t
-                                          r'                   <- check r (rt :: G) t
+  check (lCase s l r) G t            = do (TipSum a b ** s') <- infer s G
+                                          l'         <- check l (a :: G) t
+                                          r'         <- check r (b :: G) t
                                           return $ Case s' l' r'
   check _ _ _                        = Nothing
 
@@ -197,8 +197,8 @@ testIfApp' = check (lInf (lApp (lApp (lApp (lAnno ifTerm (TipFun TipBool (TipFun
 
 ---------- Proofs ----------
 
-TypeChk.exprTipEqSwapYescase = proof {
-  intros;
-  rewrite p;
-  trivial;
-}
+RawSTLC.exprTipEqSwapCase = proof
+  intros
+  rewrite p
+  trivial
+
