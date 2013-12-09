@@ -74,6 +74,8 @@ using (G: Vect n Tip)
   optimize (If (Boo True)  b1 b2)    = optimize b1
   optimize (If (Boo False) b1 b2)    = optimize b2
   optimize (If  c   b1     b2)       = If (optimize c) (optimize b1) (optimize b2)
+  optimize (Fst (Pair fst snd))      = optimize fst
+  optimize (Snd (Pair fst snd))      = optimize snd
   optimize (Fst p)                   = Fst (optimize p)
   optimize (Snd p)                   = Snd (optimize p)
   optimize (Pair    fst    snd)      = Pair (optimize fst) (optimize snd)
