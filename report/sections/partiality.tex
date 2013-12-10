@@ -1,4 +1,203 @@
 %!TEX root = ../main.tex
-\section{Partiality --- Introducing General Recursion}
+\section{Introducing General Recursion}
 \label{sec:partiality}
 % No longer has strong normalization
+%TAPL
+
+In this section, we investigate the implications of adding general recursion to the language. Because the simply typed lambda calculus has the property of strong normalization, we cannot add recursive functions as terms in the language directly\,\cite[p. 143]{Pierce:TypeSystems}. Instead, we can add a \texttt{Fix} primitive with appropriate evaluation rules, which acts as a generator for generally recursive functions. In the definitions of the language presented so far, we have paid no special attention to the presence of \texttt{Fix}. Nevertheless, adding general recursion poses some new challenges when it comes to correctness of evaluation.
+
+\subsection{The Problem with Interpretation}
+It is compelling to think that we can safely   follow the example in Figure~ add a case for \texttt{Fix} to the well-typed interpreter, the \texttt{interp} function, from Section~\ref{sec:a-well-typed-expression-language}
+
+\begin{figure}
+\begin{alltt}
+  interp : Env G \(\rightarrow\) Expr G t \(\rightarrow\) interpTip t
+  \vdots
+  interp env (Fix f) = (interp env f) (interp env (Fix f))
+\end{alltt}
+\caption{Adding \texttt{Fix} to \texttt{interp}. Type correct, but not accepted by the totality checker.}
+\label{fig:interp-fix}
+\end{figure}
+
+However, there is no free lunch. Since \texttt{Fix} allows us to write infinitely recursive functions, the interpreter may loop forever. As a consequence, Idris's totality checker will complain that \texttt{interp} is no longer total. Hence, the introduction of \texttt{Fix} has also introduced partiality to our interpreter. While we could close our eyes and mark \texttt{interp} as \texttt{partial} to satisfy the totality checker, our problem is more fundamental: For any partial function, $\bot$ is a possible result\,\cite{Turner04totalfunctional}. That is, interpretation may fail or fail to terminate. For any total function, we are safe in the knowledge that any input will always produce an output, which is crucial for ensuring the correctness of the well-typed interpreter. We would abandon this safety by making \texttt{interp} partial. While partiality may not be a problem if you simply want to run your programs, you no longer have the ability to reason about them within Idris. This is due to the fact that partial functions are not evaluated by the type checker, as they may cause type checking to loop indefinitely\,\todo{Citation needed}. To remedy this situation, we must rethink our approach.
+
+\begin{figure}
+\begin{alltt}
+fact : Expr G (TipFun TipInt TipInt)
+fact = Fix (Lam 
+             (Lam 
+                -- if x == 0
+                (If (OpB Eql (Val 0) (Var stop))
+                  (Val 1) -- then 1
+                  -- else (x * f (x - 1))
+                  (OpB Mul (Var stop) (App (Var (pop stop)) (OpB Sub (Var stop) (Val 1))))))) 
+\end{alltt}
+\caption{The factorial function defined in the well-typed representation. \texttt{Var stop} is the input, while \texttt{Var pop stop} refers to the function.}
+\end{figure}
+
+\subsection{Interpretation as a Relation}
+%multistep
+%extrinsic vs. intrinsic
+Instead of interpreting our well-typed representation using a function, we will create an inductively defined relation \texttt{Step} which takes a step of evaluation for a given term. This will amount to defining small-step semantics for the language. A similar approach to ours, implementated in Coq, can be found in \textit{Software Foundations} by Pierce et al.\,\cite{Pierce:SF}, but they to not fully take advantage of the power of dependent types.
+
+\begin{figure}
+\begin{alltt}
+  data Step : Expr G t \(\rightarrow\) Expr G' t \(\rightarrow\) Type where
+      -- Application
+      S_App1    : {t1: Expr G (TipFun t t'), t1': Expr G (TipFun t t'), t2: Expr G t} \(\rightarrow\)
+                  Step t1 t1' \(\rightarrow\)
+                  Step (App t1 t2) (App t1' t2)
+      S_App2    : {t2: Expr G t, t2': Expr G t, f: Expr G (TipFun t t')} \(\rightarrow\)
+                  NormalForm G f \(\rightarrow\)
+                  Step t2 t2' \(\rightarrow\)
+                  Step (App f t2) (App f t2')
+      S_AppBeta : {v: Expr G t, b: Expr (t :: G) t', b': Expr G t'} \(\rightarrow\)
+                  NormalForm G v \(\rightarrow\)
+                  Step (App (Lam b) v) (subst {Glam=[]} b stop v)
+      -- Fix
+      S_Fix     : {f: Expr G (TipFun t t), f': Expr G' (TipFun t t)} \(\rightarrow\)
+                  Step f f' \(\rightarrow\)
+                  Step (Fix f) (Fix f')
+      S_FixBeta : {b: Expr (t :: G) t, b': Expr G t} \(\rightarrow\)
+                  Step (Fix (Lam b)) (subst {Glam=[]} b stop (Fix (Lam b)))
+      \vdots
+\end{alltt}
+\caption{The Step evaluation relation with trivial parts omitted.}
+\label{fig:step-relation}
+\end{figure}
+
+\texttt{Step} is an evaluation relation which takes an \texttt{Expr G t} to an \texttt{Expr G' t}. The reason that the resulting environment \texttt{G'} is not specified more precisely is that it may or may not change, depending on whether or not substitution is performed. Each of the cases have been translated directly from the corresponding small-step evaluation rules specified by Pierce\,\cite{Pierce:TypeSystems}.
+
+Defining the semantics for the language as a relation means that evaluation must now be given as an extrinsic proof, in contrast to the intrinsic proof of correctness provided by a total \texttt{interp} function. Furthermore, it means that we do not have to deal with the unsafe nature of partial functions. Although the language no longer has the strong normalization property when general recursion is added, we can be assured that if we can give a proof that an expression \textit{a} evaluates to a certain expression \textit{b}, then evaluation has happened correctly according to the evaluation rules. Evaluating a non-terminating expression is equivalent to giving an infinitely long and repetitive proof, which is obviously not possible. 
+
+\begin{figure}
+\begin{alltt}
+  data NormalForm : (G: Vect n Tip) \(\rightarrow\) Expr G t \(\rightarrow\) Type where
+    NF_Unit : NormalForm G U
+    NF_Int  : NormalForm G (Val i)
+    NF_Bool : NormalForm G (Boo b)
+    NF_Lam  : \{b: Expr (t :: G) t'\} \(\rightarrow\) NormalForm G (Lam b)
+    NF_Pair : \{a: Expr G t\} \(\rightarrow\) \{b: Expr G t'\} \(\rightarrow\) 
+              NormalForm G a \(\rightarrow\) NormalForm G b \(\rightarrow\) NormalForm G (Pair a b)
+    NF_InL  : {a: Expr G t} \(\rightarrow\) NormalForm G a \(\rightarrow\) (b: Tip) \(\rightarrow\) NormalForm G (InL a b)
+    NF_InR  : {b: Expr G t} \(\rightarrow\) NormalForm G b \(\rightarrow\) (a: Tip) \(\rightarrow\) NormalForm G (InR b a)
+\end{alltt}
+\caption{The NormalForm relation.}
+\label{fig:normal-forms}
+\end{figure}
+%Weak normal form (Sestoft) http://www.itu.dk/~sestoft/papers/sestoft-lamreduce.pdf
+%evaluation only ever happens on closed terms
+The \texttt{Step} relation depends on the definition of normal forms presented in Figure~\ref{fig:normal-forms}. Because we do not reduce under lambda abstractions, and at the same time reduce arguments before substitution, \texttt{NormalForm} is a representation of terms on \emph{weak normal form}\,\cite{Sestoft:reduction}. Because we have no evaluation rules for lambda abstractions and do not handle variables as normal forms (although a variable technically is on normal form), evaluation can only happen on closed terms.
+
+\subsubsection{Shifting and Substitution}
+In \textit{Types and Programming Languages}, Pierce defines a very concise and elegant way of doing shifting and substitution\,\cite[pp. 79-80]{Pierce:TypeSystems}. His definition of shifting, shown in Figure~\ref{fig:Pierce-shifting}, defines a \textit{d}-place shift of a term \textit{t} above cutoff \textit{c}. Figure~\ref{fig:Pierce-substitution} gives defines substitution of a term \textit{s} for a variable \textit{j} in a term \textit{t}.
+
+\begin{figure}
+\[\uparrow \begin{matrix} d \\ c \end{matrix}(k)\quad = \begin{cases} k \\ k+d \end{cases}\begin{matrix} if\quad k < c \\ if\quad k \ge c \end{matrix}\]
+\[\uparrow \begin{matrix} d \\ c \end{matrix}(\lambda .{ t }_{ 1 }) = \lambda .{ \uparrow  }_{ c+1 }^{ d }({ t }_{ 1 })\]
+\[\uparrow \begin{matrix} d \\ c \end{matrix}({ t }_{ 1 }{ t }_{ 2 }) = { \uparrow  }_{ c }^{ d }({ t }_{ 1 }) { \uparrow  }_{ c }^{ d }({ t }_{ 2 })\]
+\caption{Definition 6.2.1: Shifting (from \textit{Types and Programming Languages})}
+\label{fig:Pierce-shifting}
+\end{figure}
+
+\begin{figure}
+\[[j\mapsto s]k=\begin{cases} s \\ k \end{cases}\begin{matrix} if\quad k=j\quad \\ otherwise \end{matrix}\]
+\[[j\mapsto s](\lambda .{ t }_{ 1 })=(\lambda .[j+1\mapsto { \uparrow  }^{ 1 }(s)]{ t }_{ 1 }\]
+\[[j\mapsto s]({ { t }_{ 1 }{ t }_{ 2 })=( }[j\mapsto s]{ t }_{ 1 }[j\mapsto s]{ t }_{ 2 })\]
+\caption{Definition 6.2.4: Substitution (from \textit{Types and Programming Languages})}
+\label{fig:Pierce-substitution}
+\end{figure}
+
+Using dependent types, we can give a very expressive definition of substitution, such as the one in Figure~\ref{fig:subst}, which is used for the \texttt{Step} relation. In contrast to Pierce's implementation these, our substitution function has the added guarantees that substitution preserves typing, and that the variable on which we perform substitution is actually in the environment.  
+
+\begin{figure}
+\begin{alltt}
+subst : \{Gglob : Vect (S n) Tip\} \(\rightarrow\) \{Glam: Vect m Tip\} \(\rightarrow\) (e: Expr (Glam ++ Gglob) t)\(\rightarrow\) 
+        HasType fZ Gglob t' \(\rightarrow\) (v: Expr (tail Gglob) t') \(\rightarrow\) Expr (Glam ++ (tail Gglob)) t
+subst                     (App f x) i v = App (subst f i v) (subst x i v)
+subst                       (Fix f) i v = Fix (subst f i v)
+subst \{Glam\} \{t=TipFun x y\} (Lam b) i v = Lam $ subst \{Glam = x :: Glam\} b i v
+subst \{Glam\} \{Gglob\}        (Var y) i v = 
+  case splitVar y of
+   Left (k ** y')  => Var $ append y' (tail Gglob) -- Local var: Extend env of y' with Gglob
+   Right (k ** y') => weaken \{E=[]\} Glam (substGlobal y' i v) -- v or tail y'
+\vdots
+\end{alltt}
+\caption{The substitution function used for the \texttt{Step} relation.}
+\label{fig:subst}
+\end{figure}
+
+In \texttt{subst}, the equivalent to [\textit{j}$\mapsto$\textit{s}]\textit{t} from definition 6.2.4 is [\textit{i}$\mapsto$\textit{v}]\textit{e}, where \textit{i} is the parameter \texttt{HasType fZ Gglob t'}.
+
+% Basic observations
+% \begin{itemize}
+% \item We always substitute on the first variable in the 
+% \end{itemize}
+
+The first case of definition 6.2.4 is the \texttt{Var} case. Based on the idea behind the cutoff parameter for shifting, we handle the \texttt{Var} case by first observing that \texttt{e} must be defined in a local context of \textit{m} variables, \texttt{Glam}, and a global non-empty context, \texttt{Gglob}. The variable on which we perform substitution is always the first variable in \texttt{Gglob}. The local context is added to each time we go under a lambda abstraction (hence the name, Glam). Variables in \texttt{Glam} are by definition below the cutoff and variables in the global context \texttt{Gglob} are by definition equal to or above the cutoff.
+
+We determine whether a variable is in \texttt{Glam} or \texttt{Gglob} by using the function \texttt{splitVar} (see Figure~\ref{fig:splitVar}). This function performs the same splitting as the first case in definition 6.2.1, returning a strengthened variable only parameterized by either the local or the global context, respectively. Because we always substitute on the first variable in \texttt{Gglob}, a local variable defined in \texttt{Glam} 
+
+\begin{figure}
+\begin{alltt}
+splitVar : \{G: Vect m Tip\} \(\rightarrow\) \{G': Vect n Tip\} \(\rightarrow\) HasType i (Glam ++ Gglob) t \(\rightarrow\) 
+           Either (Exists (Fin m) (\textbackslash{k} => HasType k Glam t)) 
+                  (Exists (Fin n) (\textbackslash{k} => HasType k Gglob t))
+\end{alltt}
+\caption{The type signature of \texttt{splitVar}. The implementation should be uninteresting.}
+\label{fig:splitVar}
+\end{figure}
+
+%  We cannot do substitution in an empty global context, as we would have no variable to substitute. We always do substitution on the first variable in the global context, so \texttt{HasType fZ Gglob t'}, denoted by \textit{i}, is a membership predicate for the variable we wish to substitute. In this sense, \textit{i} can be regarded as a ``pointer''. \texttt{v} is the expression which will replace the first variable in the global context. Therefore, \texttt{v} can only be defined in the context \texttt{tail Gglob}, since the substituted variable must not occur free in \texttt{v}. Finally, we can return an \texttt{Expr (Glam ++ tail Gglob) t}, where the first variable in \texttt{Gglob} has been substituted, and thus does not appear in the context of the returned expression.
+
+% As is apparent from Figure~\ref{fig:subst}, the most interesting case of \texttt{subst} is the \texttt{Var} case. \texttt{splitVar} is a function which identifies to which part of the context (either the local or the global part) a specific variable belongs. In shifting terms, this operation is similar to determining whether the variable is below or above the cutoff.
+
+% If the variable in question, \textit{y}, is below the cutoff (i.e. is in \texttt{Glam}), we can simply append \texttt{tail Gglob} to the variable and be done. If \textit{y} is above the cutoff, and thus in \texttt{Gglob}, we must determine whether it is the variable that we want to perform substitution on. This is handled by the \texttt{substGlobal} function in Figure~\ref{fig:substGlobal}. In \texttt{substGlobal}, our ``pointer'' predicate \textit{i} from earlier becomes crucial: If \textit{y} points to the same variable as \textit{i}, the type system can unify their types, \texttt{t} and \texttt{t'}. This means that the types of \texttt{e} and \texttt{v} from the definition of \texttt{subst} are equal, and thus \texttt{v} can be substituted for the variable in a type-safe manner.
+
+\begin{figure}
+\begin{alltt}
+    substGlobal : \{Gglob : Vect (S n) Tip\} \(\rightarrow\) HasType i Gglob t \(\rightarrow\) 
+                  HasType fZ Gglob t' \(\rightarrow\) Expr (tail Gglob) t' \(\rightarrow\) Expr (tail Gglob) t
+    substGlobal stop    stop v = v
+    substGlobal (pop y) stop v = Var y
+\end{alltt}
+\caption{The \texttt{substGlobal} function.}
+\label{fig:substGlobal}
+\end{figure}
+
+% If \textit{y} points to a different variable than \textit{i}, we shift it down by returning a \texttt{Var y} from a \texttt{pop y} predicate. So the result of \texttt{substGlobal} is either a shifted down variable or the expression \texttt{v}, both an \texttt{Expr (tail Gglob)}. What remains is to \texttt{weaken} this expression with \texttt{Glam}, such that the resulting expression has type \texttt{Expr (Glam ++ Gglob) t'}. \texttt{weaken} is shown in Figure~\ref{fig:weaken}.
+
+\begin{figure}
+\begin{alltt}
+weaken : \{E: Vect m Tip, G: Vect n Tip\} -> (F: Vect o Tip) -> 
+         Expr (E ++ G) t -> Expr (E ++ F ++ G) t
+weaken {E} {G} F (Var x) = case splitVar x of
+                             Left (k ** x') => Var $ append (append x' F) G
+                             Right (k ** x') => Var $ prepend x' (E++F)
+\vdots
+\end{alltt}
+\caption{The \texttt{weaken} function. All other cases than \texttt{Var} have been omitted, as they are uninteresting.}
+\label{fig:weaken}
+\end{figure}
+
+\subsubsection{Multistepping}
+% MULTISTEP
+While the \texttt{Step} relation provides a way to make a term take one step of evaluation, it is seldom the case that only one step is needed to reach a final state. Inspired by the approach taken in \textit{Software Foundations}\,\cite{Pierce:SF}, we provide a relation \texttt{MultiStep} which a allows you to provide evaluation proofs for arbitrarily many steps. An implementation of \texttt{MultiStep} is given in Figure~\ref{fig:MultiStep}.
+
+\begin{figure}
+\begin{alltt}
+using (G'': Vect o Tip)
+  data MultiStep : Expr G t -> Expr G' t -> Type where
+     M_Refl : \{a: Expr G t\} -> MultiStep a a
+     M_Step : \{a: Expr G t, b: Expr G' t, c: Expr G'' t\} -> 
+              Step a b -> MultiStep b c -> MultiStep a c
+\end{alltt}
+\caption{The \texttt{MultiStep} relation. The \texttt{using} notation simply allows us to use G in the second constructor.}
+\label{fig:MultiStep}
+\end{figure}
+
+\subsection{Discussion}
+% Edwin Brady's solution 
+
+In the Idris tutorial\,\cite{Brady:IdrisTutorial}, Edwin Brady has a different solution to the problem of defining recursive functions. He utilizes Idris's internal reduction semantics to define a lazily evaluated application function ...
+%Partiality monad
