@@ -6,38 +6,36 @@ import NatCmp
 %default total
 
 data Eff : Type where
-    Inc  : Nat -> Eff
-    Dec  : Nat -> Eff
-    Flat :        Eff
+  Flat :        Eff 
+  Inc  : Nat -> Eff
+  Dec  : Nat -> Eff
 
-  %assert_total
-  applyIncEff : Eff -> Nat -> Nat
-  applyIncEff Flat n = n
-  applyIncEff (Inc Z) n = S n
-  applyIncEff (Inc (S m)) n = S (applyIncEff (Inc m) n)
-  applyIncEff (Dec x) n = n
+stackProduce : Eff -> Nat -> Nat
+stackProduce Flat n = n
+stackProduce (Inc Z) n = S n
+stackProduce (Inc m) n = S (m+n)
+stackProduce (Dec _) n = n
 
-  %assert_total
-  applyDecEff : Eff -> Nat -> Nat
-  applyDecEff Flat n = n
-  applyDecEff (Dec Z) n = S n
-  applyDecEff (Dec (S m)) n = S (applyDecEff (Dec m) n)
-  applyDecEff (Inc x) n = n
+stackReq : Eff -> Nat -> Nat
+stackReq Flat n = n
+stackReq (Dec Z) n = S n
+stackReq (Dec m) n = S (m+n)
+stackReq (Inc x) n = n
 
-  %assert_total
-  effPlus : Eff -> Eff -> Eff
-  effPlus Flat b = b
-  effPlus a Flat = a
-  effPlus (Inc x) (Inc y) = Inc (S (x + y))
-  effPlus (Inc Z) (Dec (S x)) = Dec x
-  effPlus (Inc Z) (Dec Z) = Flat
-  effPlus (Inc (S x)) (Dec (S y)) = effPlus (Inc x) (Dec y)
-  effPlus (Inc (S x)) (Dec Z) = Inc x
-  effPlus (Dec x) (Dec y) = Dec (S (x + y))
-  effPlus (Dec Z) (Inc (S x)) = Inc x
-  effPlus (Dec Z) (Inc Z) = Flat
-  effPlus (Dec (S x)) (Inc (S y)) = effPlus (Dec x) (Inc y)
-  effPlus (Dec (S x)) (Inc Z) = Dec x
+%assert_total
+effPlus : Eff -> Eff -> Eff
+effPlus Flat b = b
+effPlus a Flat = a
+effPlus (Inc x) (Inc y) = Inc (S (x + y))
+effPlus (Inc Z) (Dec (S x)) = Dec x
+effPlus (Inc Z) (Dec Z) = Flat
+effPlus (Inc (S x)) (Dec (S y)) = effPlus (Inc x) (Dec y)
+effPlus (Inc (S x)) (Dec Z) = Inc x
+effPlus (Dec x) (Dec y) = Dec (S (x + y))
+effPlus (Dec Z) (Inc (S x)) = Inc x
+effPlus (Dec Z) (Inc Z) = Flat
+effPlus (Dec (S x)) (Inc (S y)) = effPlus (Dec x) (Inc y)
+effPlus (Dec (S x)) (Inc Z) = Dec x
 
 mutual
   data Inst : Nat -> Nat -> Type where
@@ -50,9 +48,12 @@ mutual
     LTH  :        Inst (S (S s)) (S s)
     NAY  :        Inst (S s)     (S s)
     IF   :        Inst (S (S (S s))) (S s)
-    --FST  : (f : Eff) -> (s : Eff) -> s 
-    GOTO : (e : Eff) -> Inst (applyDecEff e s) (applyIncEff e s)
+    FST  : {e : Eff} -> Nat -> Inst (stackReq e s) (stackProduce e s)
+    SND  : (e : Eff) -> Nat -> Inst (stackReq e s) (stackProduce e s)
 
+  partial
+  constructInst : Eff -> Nat -> Type
+  constructInst Flat n = Inst n n
 
   data Prog : Nat -> Nat -> Type where
     Nil  : Prog s s
@@ -110,7 +111,7 @@ using (G: Vect n Tip)
   getEff TipUnit        = Flat
   getEff TipInt         = Inc 0
   getEff TipBool        = Inc 0
-  getEff (TipProd T T') = Inc 1
+  getEff (TipProd T T') = Flat
   getEff (TipSum T T')  = Inc 1
   getEff (TipFun T T')  = getEff T'
 
@@ -144,6 +145,7 @@ using (G: Vect n Tip)
   compile (App (Lam b) e) sf = compile b (e ::: sf)
   compile (Var stop) {G = x :: xs} (e ::: sf) = compile e sf
   compile (Var (pop k)) (e ::: sf) = compile (Var k) sf
+  compile (Fst e) {t=TipInt} sf = (FST Z {e=(getEff TipInt)}) :: (compile e sf)
   
   --compile (Fst (Var stop)) ((Pair e _) ::: sf) = compile e sf
   --compile (Fst (Var (pop k)) (e ::: sf)) compile (Fst k) sf
@@ -156,9 +158,6 @@ using (G: Vect n Tip)
   partial
   test5 : Prog 0 1
   test5 = compile test4 Nill
-
-  testInst : Prog 0 1
-  testInst = GOTO (getEff TipInt) :: (StackMachine4.Nil)
 
 {-  test4 : Expr Nil TipBool
   test4 = (OpU Nay (Boo True))
