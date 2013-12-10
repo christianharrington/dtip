@@ -4,22 +4,22 @@ module STLC
 
 mutual
   data Expr : Type where
-    App  : Expr -> Expr -> Expr
-    Boo  : Bool -> Expr
-    Case : Expr -> Expr -> Expr -> Expr
-    Fix  : Expr -> Expr
-    Fst  : Expr -> Expr
-    If   : Expr -> Expr -> Expr -> Expr
-    InL  : Expr -> Expr
-    InR  : Expr -> Expr
-    Lam  : Expr -> Expr
-    OpB  : BinOp -> Expr
-    OpU  : UnOp -> Expr
-    Pair : Expr -> Expr -> Expr
-    Snd  : Expr -> Expr
-    Unit : Expr
-    Val  : Int -> Expr
-    Var  : Nat -> Expr
+    Lam  : Expr -> Expr                 -- STLC
+    Var  : Nat -> Expr                  -- STLC
+    App  : Expr -> Expr -> Expr         -- STLC
+    Val  : Int -> Expr                  -- Base type
+    Boo  : Bool -> Expr                 -- Base type
+    Unit : Expr                         -- Base type
+    OpB  : BinOp -> Expr                -- Binary operation
+    OpU  : UnOp -> Expr                 -- Unary operation
+    Pair : Expr -> Expr -> Expr         -- Product type
+    Fst  : Expr -> Expr                 -- Product type
+    Snd  : Expr -> Expr                 -- Product type
+    InL  : Expr -> Expr                 -- Sum type
+    InR  : Expr -> Expr                 -- Sum type
+    Case : Expr -> Expr -> Expr -> Expr -- Sum type
+    If   : Expr -> Expr -> Expr -> Expr -- Conditional
+    Fix  : Expr -> Expr                 -- Recursion
 
   data BinOp : Type where
     Divide : Expr -> Expr -> BinOp
