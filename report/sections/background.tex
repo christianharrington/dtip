@@ -38,19 +38,19 @@ The simply typed lambda calculus is a formal system based on the untyped lambda 
 \begin{figure}
 
 \begin{prooftree}
-\AxiomC{t$_{1} \to$ t$_{1}^{\prime}$}
+\AxiomC{t$_{1} \longrightarrow$ t$_{1}^{\prime}$}
 \RightLabel{\sc{(E-App1)}}
-\UnaryInfC{t$_{1}$ t$_{2}$ $\to$ t$_{1}^{\prime}$ t$_{2}$}
+\UnaryInfC{t$_{1}$ t$_{2}$ $\longrightarrow$ t$_{1}^{\prime}$ t$_{2}$}
 \end{prooftree}
 
 \begin{prooftree}
-\AxiomC{t$_{2} \to$ t$_{2}^{\prime}$}
+\AxiomC{t$_{2} \longrightarrow$ t$_{2}^{\prime}$}
 \RightLabel{\sc{(E-App2)}}
-\UnaryInfC{v$_{1}$ t$_{2}$ $\to$ v$_{1}$ t$_{2}^{\prime}$}
+\UnaryInfC{v$_{1}$ t$_{2}$ $\longrightarrow$ v$_{1}$ t$_{2}^{\prime}$}
 \end{prooftree}
 
 \begin{center}
-($\lambda$x : T$_{11}$.t$_{12}$) v$_{2} \to$ [x $\mapsto$ v$_{2}$]t$_{12}$ \sc{(E-AppAbs)}
+($\lambda$x : T$_{11}$.t$_{12}$) v$_{2} \longrightarrow$ [x $\mapsto$ v$_{2}$]t$_{12}$ \sc{(E-AppAbs)}
 \end{center}
 
 \caption{Evaluation rules for the simply typed lambda calculus.}
@@ -59,15 +59,27 @@ The simply typed lambda calculus is a formal system based on the untyped lambda 
 \end{figure}
 \end{center}
 
-The simply typed lambda calculus has the property of \emph{strong normalization}\,\cite[pp. 149]{Pierce:TypeSystems}: After finite number of reductions, we will arrive at a normal form. This means that when evaluating a term, the evaluation will always terminate. As a consequence of this, the simply typed lambda calculus is not Turing-complete.
+The simply typed lambda calculus has the property of \emph{strong normalization}\,\cite[pp. 149]{Pierce:TypeSystems}: After finite number of reductions, we will arrive at a normal form. A term is in normal form if no evaluation rules apply to it. This means that when evaluating a term, the evaluation will always terminate. As a consequence of this, the simply typed lambda calculus is not Turing-complete.
 
-This system will be the foundation of the language presented in the next sections. You will also see several extensions to the calculus, such as the addition of sum and product types.
+This system will be the foundation of the language presented in the next sections. We will also add several extensions to the calculus, such as the sum and product types.
 
 \subsection{Dependent Types}
 \label{sec:dependent-types-idris}
 % - "Correct by construction"
 % - Extrinsic vs intrinsic verification
-In many modern programming languages, types can be parameterized by other types. This is often seen in generic collection types such as \texttt{List: Type $\to$ Type}, which is parameterized by the type contained in the list. But in programming languages with dependent types, types can also depend on terms. The classic example is the dependent vector, \texttt{Vect: Nat $\to$ Type $\to$ Type}, where the natural number is the length of the vector. When a type depends on a term, one says the type is \emph{indexed} by that term, as opposed to being \emph{parameterized} by a type. So \texttt{Vect n A} is a type \emph{indexed} over the natural number \texttt{n}, and \emph{parameterized} by the type \texttt{A}. The constructors for the vector data type can be seen in Figure~\ref{fig:vect}.
+Before we get started with dependent types, let us define a datatype for representing natural numbers. This will serve as an introduction to the Idris syntax for data declarations. In Figure\,\ref{fig:nat} two constructors for the \texttt{Nat} datatype can be seen: \texttt{Z} and \texttt{S n}, where \texttt{n} is a \texttt{Nat}. \texttt{Z} represents zero, while \texttt{S n} represents the successor to \texttt{n}. So \texttt{(S (S Z))} represents the natural number 2.
+
+\begin{figure}
+\begin{alltt}
+data Nat : Type where
+  Z : Nat
+  S : Nat -> Nat
+\end{alltt}
+\caption{The natural number data type.}
+\label{fig:nat}
+\end{figure}
+
+In many modern programming languages, types can depend on other types. This is often seen in generic collection types such as \texttt{List: Type $\to$ Type}, which is parameterized by the type contained in the list. But in programming languages with dependent types, types can also depend on terms. The classic example is the dependent vector, \texttt{Vect: Nat $\to$ Type $\to$ Type}. It can be seen in Figure~\ref{fig:vect}. A \texttt{Vect} takes two arguments: a natural number \texttt{n} and a type \texttt{a}. Here, the natural number \texttt{n} specifies the length of the vector, and \texttt{a} the type of its elements. As we can see from the constructors, the empty vector always has length \texttt{Z}, while the \texttt{(::)} constructor always returns a vector one element longer than the vector is constructed from. Since the type \texttt{a} is the same for both constructors, we say a vector is \emph{parameterized} by the type. The natural number \texttt{n}, however, is different for each constructor, so the vector is \emph{indexed} by natural numbers.
 
 \begin{figure}
 \begin{alltt}
@@ -75,19 +87,11 @@ data Vect : Nat -> Type -> Type where
   Nil  : Vect Z a
   (::) : a -> Vect k a -> Vect (S k) a
 \end{alltt}
-\caption{The vector data type. \texttt{Z} and \texttt{(S k)} are constructors for Nat, where \texttt{Z} represents 0, and \texttt{(S k)} represents the natural number succeeding \texttt{k}. So \texttt{(S (S Z))} represents 2.}
+\caption{The vector data type.}
 \label{fig:vect}
 \end{figure}
 
-To see how dependent types can be useful, let us look at the \texttt{zip} function for lists and vectors. The \texttt{zip} function for lists has the type \textit{List A $\to$ List B $\to$ List (A, B)}. The \texttt{zip} function takes two lists of elements, and returns a list of pairs of elements from each list. But what happens if one list is longer than the other? Does the \texttt{zip} function simply stop zipping when it reaches the end of one of the lists? Or does it fill the remaining pairs with some default value? We have no way of knowing without reading the documentation or looking through the source.
-
-When types can depend on values, it becomes possible to build strong invariants into the types themselves, which lets the type checker figure out whether they hold. In Figure~\ref{fig:zip}, a zip function for the dependent vector is defined. It takes two vectors with the length \texttt{n}, and returns a vector with length \texttt{n}. If someone tries to compile a program that tries to zip vectors of different lengths, and therefore different types, the type checker will catch it, and the program will not compile. Notice that we do not need to match on the cases where one vector is empty while the other still has elements, as the vectors are of equal length in every iteration. In fact, the type checker will not even let us check for this case, as it is not well-typed.
-
-\paragraph{Correct by construction} Dependent types help us to write programs and functions that are \emph{correct by construction}\,\cite[p. 464]{Pierce:TypeSystems}. When a function is correct by construction, it means the type encodes all the invariants we want to hold, and if the type checker agrees that our functions have this type, we have proof that our program lives up to our specification. This is directly related to the Curry-Howard correspondence\,\cite{Pierce:TypeSystems}, which relates logic and type theory. Specifically, logical propositions corresponds to types, and a proof of proposition $P$ corresponds to a term with type $P$.
-
-\paragraph{Intrinsic and extrinsic proofs} In the \texttt{zip} function, we have an \emph{intrinsic} proof that the resulting vector is the same length as the two input vectors. It is intrinsic as it is contained in the definition itself. Without dependent types, we would have to have an \emph{extrinsic} proof, a separate proof stating the lengths are the same. Even with dependent types, it can sometimes be easier to weaken the definition, and instead rely on an external proof for correctness. As a final example, we will define the finite set data type \texttt{Fin}, which can be seen in Figure~\ref{fig:fin}\todo{This might be going in another section}.
-
-Dependent types have been implemented in several programming languages, such as Coq\,\cite{Coq}, Agda\,\cite{Agda} and, of course, Idris. 
+To see how dependent types can be useful, let us look at the \texttt{zip} function for lists and vectors. The \texttt{zip} function for lists has the type \texttt{List A $\to$ List B $\to$ List (A, B)}. The \texttt{zip} function takes two lists of elements, and returns a list of pairs of elements from each list. But what happens if one list is longer than the other? Does the \texttt{zip} function simply stop zipping when it reaches the end of one of the lists? Or does it fill the remaining pairs with some default value? We have no way of knowing without reading the documentation or looking through the source.
 
 \begin{figure}
 \begin{alltt}
@@ -99,12 +103,11 @@ zip (x :: xs) (y :: ys) = (x, y) :: zip xs ys
 \label{fig:zip}
 \end{figure}
 
-\begin{figure}
-\begin{alltt}
-data Fin : Nat -> Type where
-  fZ : Fin (S k)
-  fS : Fin k -> Fin (S k)
-\end{alltt}
-\caption{\texttt{Fin} represents a finite set with \texttt{(S k)} elements. It can be used to represent bounded natural numbers.}
-\label{fig:fin}
-\end{figure}
+In Figure~\ref{fig:zip}, a zip function for the dependent vector is defined. It takes two vectors with the length \texttt{n}, and returns a vector with length \texttt{n}. If someone tries to compile a program that tries to zip vectors of different lengths, and therefore different types, the type checker will catch it, and the program will not compile. Notice that we do not need to match on the cases where one vector is empty while the other still has elements, as the vectors are of equal length in every iteration. In fact, the type checker will not even let us match on this case, as it is not well-typed: the \texttt{Nat} parameters \texttt{Z} and \texttt{(S n)} cannot unify.
+
+\paragraph{Correct by construction} Dependent types help us to write programs and functions that are \emph{correct by construction}\,\cite[p. 464]{Pierce:TypeSystems}. When a function is correct by construction, it means the type encodes all the invariants we want to hold, and if the type checker agrees that our function has this type, we have proof that our program lives up to our specification. This is directly related to the Curry-Howard correspondence\,\cite[pp. 108]{Pierce:TypeSystems}, which relates logic and type theory. Specifically, logical propositions corresponds to types, and a proof of proposition $P$ corresponds to a term with type $P$. So in other words, a term that is correct by construction, is a proof of its own correctness.
+
+\paragraph{Intrinsic and extrinsic proofs} In the \texttt{zip} function, we have an \emph{intrinsic} proof that the resulting vector is the same length as the two input vectors. It is intrinsic as it is contained in the definition itself. We can also use dependent types when constructing \emph{extrinsic} proofs, proofs residing outside the definition. When using dependent types in this manner, it resembles constructing proofs in intuitionistic logic. In fact, the Curry-Howard correspondence tells us that this is exactly what we are doing. It should be noted that sometimes it is easier to weaken the definition, and instead rely on an external proof for correctness.
+
+Dependent types have been implemented in several programming languages, such as Coq\,\cite{Coq}, Agda\,\cite{Agda} and, of course, Idris. 
+
