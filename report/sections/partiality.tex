@@ -4,10 +4,12 @@
 % No longer has strong normalization
 %TAPL
 
-In this section, we investigate the implications of adding general recursion to the language. Because the simply typed lambda calculus has the property of strong normalization, we cannot add recursive functions as terms in the language directly\,\cite[p. 143]{Pierce:TypeSystems}. Instead, we can add a \texttt{Fix} primitive with appropriate evaluation rules, which acts as a generator for generally recursive functions. In the definitions of the language presented so far, we have paid no special attention to the presence of \texttt{Fix}. Nevertheless, adding general recursion poses some new challenges when it comes to correctness of evaluation.
+In this section, we investigate the implications of adding general recursion to the language. Because the simply typed lambda calculus has the property of strong normalization, we cannot define recursive functions directly as terms in the language\,\cite[p. 143]{Pierce:TypeSystems}. Instead, we can extend the language with a \texttt{Fix} primitive with appropriate evaluation rules, which acts as a generator for generally recursive functions. As we do not have named variables, we have chosen to implement \texttt{Fix} as opposed to the arguably more practical \texttt{letrec} construct suggested by Pierce\,\cite[p. 144]{Pierce:TypeSystems}.
+
+In the definitions of the language presented so far, we have paid no special attention to the presence of \texttt{Fix}. Nevertheless, adding general recursion poses some new challenges when it comes to correctness of evaluation.
 
 \subsection{The Problem with Interpretation}
-It is compelling to think that we can safely   follow the example in Figure~ add a case for \texttt{Fix} to the well-typed interpreter, the \texttt{interp} function, from Section~\ref{sec:a-well-typed-expression-language}
+It is compelling to think that we can safely follow the example in Figure~\ref{fig:interp-fix} and add a case for \texttt{Fix} to the well-typed interpreter, the \texttt{interp} function, from Section~\ref{sec:a-well-typed-expression-language}:
 
 \begin{figure}
 \begin{alltt}
@@ -19,8 +21,8 @@ It is compelling to think that we can safely   follow the example in Figure~ add
 \label{fig:interp-fix}
 \end{figure}
 
-However, there is no free lunch. Since \texttt{Fix} allows us to write infinitely recursive functions, the interpreter may loop forever. As a consequence, Idris's totality checker will complain that \texttt{interp} is no longer total. Hence, the introduction of \texttt{Fix} has also introduced partiality to our interpreter. While we could close our eyes and mark \texttt{interp} as \texttt{partial} to satisfy the totality checker, our problem is more fundamental: For any partial function, $\bot$ is a possible result\,\cite{Turner04totalfunctional}. That is, interpretation may fail or fail to terminate. For any total function, we are safe in the knowledge that any input will always produce an output, which is crucial for ensuring the correctness of the well-typed interpreter. We would abandon this safety by making \texttt{interp} partial. While partiality may not be a problem if you simply want to run your programs, you no longer have the ability to reason about them within Idris. This is due to the fact that partial functions are not evaluated by the type checker, as they may cause type checking to loop indefinitely\,\todo{Citation needed}. To remedy this situation, we must rethink our approach.
-
+However, there is no free lunch. Since \texttt{Fix} allows us to write infinitely recursive functions, the interpreter may loop forever. As a consequence, Idris's totality checker will complain that \texttt{interp} is no longer total, hence partial. Totality has the implication that for any total function, any input will always produce an output\,\cite{Turner04totalfunctional}. This property is important in consideration of the Curry-Howard correspondence, as we cannot regard a function to be a proof of its type unless all cases of the input has been covered. Furthermore, partial functions are not evaluated by the type checker, as they may cause type checking to loop indefinitely\,\todo{Citation needed}. Consequently, while we can now define more interesting functions using recursion, we no longer have the ability to reason about the result of interpretation within Idris. To remedy this situation, we must rethink our approach.
+\todo{Figure fact: overfull hbox}
 \begin{figure}
 \begin{alltt}
 fact : Expr G (TipFun TipInt TipInt)
@@ -66,9 +68,11 @@ Instead of interpreting our well-typed representation using a function, we will 
 \label{fig:step-relation}
 \end{figure}
 
-\texttt{Step} is an evaluation relation which takes an \texttt{Expr G t} to an \texttt{Expr G' t}. The reason that the resulting environment \texttt{G'} is not specified more precisely is that it may or may not change, depending on whether or not substitution is performed. Each of the cases have been translated directly from the corresponding small-step evaluation rules specified by Pierce\,\cite{Pierce:TypeSystems}.
+\texttt{Step} is an evaluation relation which maps an input \texttt{Expr G t} to an output \texttt{Expr G' t}. The reason that the resulting environment \texttt{G'} is not specified more precisely is that it may or may not change, depending on whether or not substitution is performed. Each of the cases have been translated directly and straightforwardly from the corresponding small-step evaluation rules specified by Pierce\,\cite{Pierce:TypeSystems}.
 
-Defining the semantics for the language as a relation means that evaluation must now be given as an extrinsic proof, in contrast to the intrinsic proof of correctness provided by a total \texttt{interp} function. Furthermore, it means that we do not have to deal with the unsafe nature of partial functions. Although the language no longer has the strong normalization property when general recursion is added, we can be assured that if we can give a proof that an expression \textit{a} evaluates to a certain expression \textit{b}, then evaluation has happened correctly according to the evaluation rules. Evaluating a non-terminating expression is equivalent to giving an infinitely long and repetitive proof, which is obviously not possible. 
+In contrast to the intrinsic proof of correctness provided by a total \texttt{interp} function, defining the semantics for the language as a relation means that evaluation must now be given as an extrinsic proof. With \texttt{Step}, we can prove that a well-typed expression \textit{a} evaluates to a well-typed expression \textit{b} in one step. Due to the Curry-Howard correspondence, using a given constructor of \texttt{Step} corresponds to applying the corresponding evaluation rule. Any parameter to that rule will thus provide an additional proof obligation, which must be discharged using a \texttt{Step} (or \texttt{NormalForm}) constructor.
+
+Evaluating a non-terminating expression is equivalent to giving an infinitely long and repetitive proof, which is obviously not possible. However, a promising alternative to providing evaluation as a relation is Nils Anders Danielsson's use of a partiality monad\,\cite{Danielsson:2012:OSU:2364527.2364546}. In this approach it is possible to reason about possibly infinite evaluation using coinduction. Specifically, it is possible to reason about which computations that must return a value \texttt{now}, and which that will return \texttt{later}. We have not explicitly explored this approach for the present work, but the partiality monad seems to be a quite powerful tool.
 
 \begin{figure}
 \begin{alltt}
@@ -87,9 +91,11 @@ Defining the semantics for the language as a relation means that evaluation must
 \end{figure}
 %Weak normal form (Sestoft) http://www.itu.dk/~sestoft/papers/sestoft-lamreduce.pdf
 %evaluation only ever happens on closed terms
-The \texttt{Step} relation depends on the definition of normal forms presented in Figure~\ref{fig:normal-forms}. Because we do not reduce under lambda abstractions, and at the same time reduce arguments before substitution, \texttt{NormalForm} is a representation of terms on \emph{weak normal form}\,\cite{Sestoft:reduction}. Because we have no evaluation rules for lambda abstractions and do not handle variables as normal forms (although a variable technically is on normal form), evaluation can only happen on closed terms.
+The \texttt{Step} relation depends on the definition of normal forms presented in Figure~\ref{fig:normal-forms}. Because we do not reduce under lambda abstractions, and at the same time reduce arguments before substitution, \texttt{NormalForm} is a representation of terms in \emph{weak normal form}\,\cite{Sestoft:reduction}. Because we have no evaluation rules for lambda abstractions and do not represent variables as normal forms (although a variable technically is in normal form), evaluation can only happen on closed terms.
 
 \subsubsection{Shifting and Substitution}
+Substitution is used for reduction of lambda terms. For closed terms, every variable can be substituted with an expression of the same type using $\beta$-reduction, yielding a term consisting only of values. When working with de Bruijn-indices, substitution requires the operation of shifting, since remaining variables must be renumbered whenever one variable has been substituted.
+
 In \textit{Types and Programming Languages}, Pierce defines a very concise and elegant way of doing shifting and substitution\,\cite[pp. 79-80]{Pierce:TypeSystems}. His definition of shifting, shown in Figure~\ref{fig:Pierce-shifting}, defines a \textit{d}-place shift of a term \textit{t} above cutoff \textit{c}. Figure~\ref{fig:Pierce-substitution} gives defines substitution of a term \textit{s} for a variable \textit{j} in a term \textit{t}.
 
 \begin{figure}
@@ -102,14 +108,13 @@ In \textit{Types and Programming Languages}, Pierce defines a very concise and e
 
 \begin{figure}
 \[[j\mapsto s]k=\begin{cases} s \\ k \end{cases}\begin{matrix} if\quad k=j\quad \\ otherwise \end{matrix}\]
-\[[j\mapsto s](\lambda .{ t }_{ 1 })=\lambda .[j+1\mapsto { \uparrow  }^{ 1 }(s)]{ t }_{ 1 }\]
+\[[j\mapsto s](\lambda .{ t }_{ 1 })=\lambda .[j+1\mapsto { \uparrow  }_{ 0 }^{ 1 }(s)]{ t }_{ 1 }\]
 \[[j\mapsto s]({ { t }_{ 1 }{ t }_{ 2 })=( }[j\mapsto s]{ t }_{ 1 }[j\mapsto s]{ t }_{ 2 })\]
 \caption{Definition 6.2.4: Substitution (from \textit{Types and Programming Languages})}
 \label{fig:Pierce-substitution}
 \end{figure}
 
-Using dependent types, we can give a very expressive definition of substitution, such as the one in Figure~\ref{fig:subst}, which is used for the \texttt{Step} relation. In contrast to Pierce's implementation of these, our substitution function has the added guarantees that substitution preserves typing, and that the variable on which we perform substitution is actually in the context.  
-
+Using dependent types, we can give a very expressive definition of substitution, such as the one in Figure~\ref{fig:subst}, which is used for the \texttt{Step} relation. In contrast to Pierce's implementation, our substitution function has the added guarantees that substitution preserves typing, and that the variable on which we perform substitution is actually in the context. This is guaranteed by our richer representation of de Bruijn-indices as proofs of membership in a typing context.  
 \begin{figure}
 \begin{alltt}
 subst : \{Gglob : Vect (S n) Tip\} \(\rightarrow\) \{Glam: Vect m Tip\} \(\rightarrow\) (e: Expr (Glam ++ Gglob) t)\(\rightarrow\) 
@@ -126,7 +131,6 @@ subst \{Glam\} \{Gglob\}        (Var y) i v =
 \caption{The substitution function used for the \texttt{Step} relation.}
 \label{fig:subst}
 \end{figure}
-
 Our implementation of substitution has the following properties, which may not all seem immediately obvious:
 \begin{enumerate}
 \item A variable is either defined in the local context, \texttt{Glam}, or the global context \texttt{Gglob}. Local variables are those which are added to the context when the function goes under a lambda abstraction (hence the name, \texttt{Glam}).
@@ -136,17 +140,15 @@ Our implementation of substitution has the following properties, which may not a
 %\item The expression which we substitute in, \texttt{v}, is defined in the context \texttt{tail Gglob}, due to property 2.
 \end{enumerate}
 
-In \texttt{subst}, the equivalent to [\textit{j}$\mapsto$\textit{s}]\textit{t} from definition 6.2.4 is [\textit{i}$\mapsto$\textit{v}]\textit{e}, where \textit{i} is the parameter \texttt{HasType fZ Gglob t'}. In the following, we will use these specific variable names to keep the distinction clear.
-
-When met with a variable \textit{k} (called \texttt{y} in \texttt{subst}) and a variable to be substituted \textit{j}, definition 6.2.4 asks the question: ``Is \textit{k} equal to \textit{j}?''. By a call to \texttt{splitVar} (Figure~\ref{fig:splitVar}), \texttt{subst} asks: ``Is \texttt{y} defined in the local or the global context?'':
+In \texttt{subst}, the equivalent to [\textit{j}$\mapsto$\textit{s}]\textit{t} from definition 6.2.4 is [\textit{i}$\mapsto$\textit{v}]\textit{e}, where \textit{i} is the parameter \texttt{HasType fZ Gglob t'}. In the following, we will use these specific variable names to keep the distinction clear. When met with a variable \textit{k} (called \texttt{y} in \texttt{subst}) and a variable to be substituted \textit{j}, definition 6.2.4 asks the question: ``Is \textit{k} equal to \textit{j}?''. By a call to \texttt{splitVar} (Figure~\ref{fig:splitVar}), \texttt{subst} asks: ``Is \texttt{y} defined in the local or the global context?''
 
 \begin{figure}
 \begin{alltt}
-splitVar : \{G: Vect m Tip\} \(\rightarrow\) \{G': Vect n Tip\} \(\rightarrow\) HasType i (Glam ++ Gglob) t \(\rightarrow\) 
-           Either (Exists (Fin m) (\textbackslash{k} => HasType k Glam t)) 
-                  (Exists (Fin n) (\textbackslash{k} => HasType k Gglob t))
+splitVar : {G: Vect m Tip} \(\rightarrow\) \{G': Vect n Tip\} \(\rightarrow\) HasType i (G ++ G') t \(\rightarrow\)
+           Either (k: Fin m ** HasType k G t) 
+                  (k: Fin n ** HasType k G' t)
 \end{alltt}
-\caption{The type signature of \texttt{splitVar}. The implementation should be uninteresting.}
+\caption{The type signature of \texttt{splitVar}. The implementation is not interesting.}
 \label{fig:splitVar}
 \end{figure}
 
@@ -166,14 +168,14 @@ splitVar : \{G: Vect m Tip\} \(\rightarrow\) \{G': Vect n Tip\} \(\rightarrow\) 
 \label{fig:substGlobal}
 \end{figure}
 
-\texttt{substGlobal} performs two important tasks: (1) If \texttt{y} is indeed the first variable in the global context, then Idris's type system can unify \texttt{t} and \texttt{t'}, the types of \texttt{y} and \texttt{v}, since \texttt{v} has the same type as the first variable in \texttt{Gglob} (see type of \texttt{subst} or \texttt{substGlobal}). Hence substitution must be performed, which is equivalent to returning \textit{s} in the first case of definition 6.2.4. (2) If \texttt{y} is not the first variable, then \texttt{substGlobal} shifts it down (from \texttt{pop x} to \texttt{x}), to account for the substitution of the first variable. This has the same effect as explicitly adding a shift down on the evaluation rule for lambda abstractions, as suggested by Pierce\,\cite[p.~81]{Pierce:TypeSystems}.
+\texttt{substGlobal} performs two important tasks by recursion on a \texttt{HasType} membership proof: (1) If \texttt{y} is indeed the first variable in the global context, then Idris's type system can unify \texttt{t} and \texttt{t'}, the types of \texttt{y} and \texttt{v}, since \texttt{v} has the same type as the first variable in \texttt{Gglob} (see type of \texttt{subst} or \texttt{substGlobal}). Hence substitution must be performed, which is equivalent to returning \textit{s} in the first case of definition 6.2.4. (2) If \texttt{y} is not the first variable, then \texttt{substGlobal} shifts it down (from \texttt{pop x} to \texttt{x}), to account for the substitution of the first variable. This has the same effect as explicitly adding a shift down on the evaluation rule for lambda abstractions, as suggested by Pierce\,\cite[p.~81]{Pierce:TypeSystems}.
 
 The value returned by \texttt{substGlobal} has type \texttt{Expr (tail Gglob) t}, regardless of whether substitution was performed. In accordance with properties 3 and 4, this value must now be shifted \textit{d} places up, where \textit{d} denotes the length of the local context, to obtain an \texttt{Expr (Glam ++ (tail Gglob)) t}. In the call to \texttt{weaken} (Figure~\ref{fig:weaken}) in \texttt{subst}, \texttt{prepend} performs the shifting corresponding to the $k \ge c$ case of the variable case in definition 6.2.1. \texttt{prepend} simply performs \texttt{pop} \textit{d} times on any variable in the input expression, resulting in a \textit{d}-place shift. \texttt{subst} calls \texttt{weaken} with \texttt{E} defined as initially empty and \texttt{F} as the local context.
 
 \begin{figure}
 \begin{alltt}
-weaken : \{E: Vect m Tip, G: Vect n Tip\} -> (F: Vect o Tip) -> 
-         Expr (E ++ G) t -> Expr (E ++ F ++ G) t
+weaken : \{E: Vect m Tip, G: Vect n Tip\} \(\rightarrow\) (F: Vect o Tip) \(\rightarrow\) 
+         Expr (E ++ G) t \(\rightarrow\) Expr (E ++ F ++ G) t
 weaken {E} {G} F (Var x) = case splitVar x of
                              Left (k ** x') => Var $ append (append x' F) G
                              Right (k ** x') => Var $ prepend x' (E++F)
@@ -221,5 +223,14 @@ using (G'': Vect o Tip)
 \subsection{Discussion}
 % Edwin Brady's solution 
 
-In the Idris tutorial\,\cite{Brady:IdrisTutorial}, Edwin Brady has a different solution to the problem of defining recursive functions. He utilizes Idris's internal reduction semantics to define a lazily evaluated application function ...
-%Partiality monad
+In the Idris tutorial\,\cite{Brady:IdrisTutorial}, Brady has a different solution to the problem of defining recursive functions. He utilizes Idris's internal reduction semantics for defining a lazily evaluated application function \texttt{app} as a wrapper for the \texttt{App} constructor. 
+
+\begin{figure}
+\begin{alltt}
+app : |(f : Expr G (TipFun a t)) -> Expr G a -> Expr G t
+app = \f, a => App f a
+\end{alltt}
+\caption{Edwin Brady's solution for recursive functions.}
+\end{figure}
+
+With \texttt{app}, he obtains the ability to define recursive functions without adding new primitives to the language, and without extending the interpreter. The interpreter is thus kept total, but any recursively defined \texttt{Expr} expression is now deemed partial by the totality checker. As such, non-termination is still a possible result of interpretation. Also, recursion now needs to happen by calling an Idris function within the \texttt{Expr} expression, such that the language is no longer self-contained.
