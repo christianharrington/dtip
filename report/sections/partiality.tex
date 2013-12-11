@@ -102,13 +102,13 @@ In \textit{Types and Programming Languages}, Pierce defines a very concise and e
 
 \begin{figure}
 \[[j\mapsto s]k=\begin{cases} s \\ k \end{cases}\begin{matrix} if\quad k=j\quad \\ otherwise \end{matrix}\]
-\[[j\mapsto s](\lambda .{ t }_{ 1 })=(\lambda .[j+1\mapsto { \uparrow  }^{ 1 }(s)]{ t }_{ 1 }\]
+\[[j\mapsto s](\lambda .{ t }_{ 1 })=\lambda .[j+1\mapsto { \uparrow  }^{ 1 }(s)]{ t }_{ 1 }\]
 \[[j\mapsto s]({ { t }_{ 1 }{ t }_{ 2 })=( }[j\mapsto s]{ t }_{ 1 }[j\mapsto s]{ t }_{ 2 })\]
 \caption{Definition 6.2.4: Substitution (from \textit{Types and Programming Languages})}
 \label{fig:Pierce-substitution}
 \end{figure}
 
-Using dependent types, we can give a very expressive definition of substitution, such as the one in Figure~\ref{fig:subst}, which is used for the \texttt{Step} relation. In contrast to Pierce's implementation these, our substitution function has the added guarantees that substitution preserves typing, and that the variable on which we perform substitution is actually in the environment.  
+Using dependent types, we can give a very expressive definition of substitution, such as the one in Figure~\ref{fig:subst}, which is used for the \texttt{Step} relation. In contrast to Pierce's implementation of these, our substitution function has the added guarantees that substitution preserves typing, and that the variable on which we perform substitution is actually in the context.  
 
 \begin{figure}
 \begin{alltt}
@@ -119,7 +119,7 @@ subst                       (Fix f) i v = Fix (subst f i v)
 subst \{Glam\} \{t=TipFun x y\} (Lam b) i v = Lam $ subst \{Glam = x :: Glam\} b i v
 subst \{Glam\} \{Gglob\}        (Var y) i v = 
   case splitVar y of
-   Left (k ** y')  => Var $ append y' (tail Gglob) -- Local var: Extend env of y' with Gglob
+   Left  (k ** y') => Var $ append y' (tail Gglob) -- Local var: Extend env of y' with Gglob
    Right (k ** y') => weaken \{E=[]\} Glam (substGlobal y' i v) -- v or tail y'
 \vdots
 \end{alltt}
@@ -127,16 +127,18 @@ subst \{Glam\} \{Gglob\}        (Var y) i v =
 \label{fig:subst}
 \end{figure}
 
-In \texttt{subst}, the equivalent to [\textit{j}$\mapsto$\textit{s}]\textit{t} from definition 6.2.4 is [\textit{i}$\mapsto$\textit{v}]\textit{e}, where \textit{i} is the parameter \texttt{HasType fZ Gglob t'}.
+Our implementation of substitution has the following properties, which may not all seem immediately obvious:
+\begin{enumerate}
+\item A variable is either defined in the local context, \texttt{Glam}, or the global context \texttt{Gglob}. Local variables are those which are added to the context when the function goes under a lambda abstraction (hence the name, \texttt{Glam}).
+\item We always substitute on the first variable in the global context, \texttt{Gglob}, denoted by the membership predicate \texttt{HasType fZ Gglob t'} on which \texttt{subst} is parameterized.
+\item We must always return an expression defined in the context \texttt{Glam~++~(tail~Gglob)}. That is, a context in which the first variable from the global context has been removed (as per property 2).
+\item The cutoff from definition 6.2.1 is given implicitly by the length of the local context, \texttt{Glam}. This means that all variables \texttt{Glam} by definition are below the cutoff, while all variable in \texttt{Gglob} are equal to or greater than the cutoff.
+%\item The expression which we substitute in, \texttt{v}, is defined in the context \texttt{tail Gglob}, due to property 2.
+\end{enumerate}
 
-% Basic observations
-% \begin{itemize}
-% \item We always substitute on the first variable in the 
-% \end{itemize}
+In \texttt{subst}, the equivalent to [\textit{j}$\mapsto$\textit{s}]\textit{t} from definition 6.2.4 is [\textit{i}$\mapsto$\textit{v}]\textit{e}, where \textit{i} is the parameter \texttt{HasType fZ Gglob t'}. In the following, we will use these specific variable names to keep the distinction clear.
 
-The first case of definition 6.2.4 is the \texttt{Var} case. Based on the idea behind the cutoff parameter for shifting, we handle the \texttt{Var} case by first observing that \texttt{e} must be defined in a local context of \textit{m} variables, \texttt{Glam}, and a global non-empty context, \texttt{Gglob}. The variable on which we perform substitution is always the first variable in \texttt{Gglob}. The local context is added to each time we go under a lambda abstraction (hence the name, Glam). Variables in \texttt{Glam} are by definition below the cutoff and variables in the global context \texttt{Gglob} are by definition equal to or above the cutoff.
-
-We determine whether a variable is in \texttt{Glam} or \texttt{Gglob} by using the function \texttt{splitVar} (see Figure~\ref{fig:splitVar}). This function performs the same splitting as the first case in definition 6.2.1, returning a strengthened variable only parameterized by either the local or the global context, respectively. Because we always substitute on the first variable in \texttt{Gglob}, a local variable defined in \texttt{Glam} 
+When met with a variable \textit{k} (called \texttt{y} in \texttt{subst}) and a variable to be substituted \textit{j}, definition 6.2.4 asks the question: ``Is \textit{k} equal to \textit{j}?''. By a call to \texttt{splitVar} (Figure~\ref{fig:splitVar}), \texttt{subst} asks: ``Is \texttt{y} defined in the local or the global context?'':
 
 \begin{figure}
 \begin{alltt}
@@ -148,16 +150,15 @@ splitVar : \{G: Vect m Tip\} \(\rightarrow\) \{G': Vect n Tip\} \(\rightarrow\) 
 \label{fig:splitVar}
 \end{figure}
 
-%  We cannot do substitution in an empty global context, as we would have no variable to substitute. We always do substitution on the first variable in the global context, so \texttt{HasType fZ Gglob t'}, denoted by \textit{i}, is a membership predicate for the variable we wish to substitute. In this sense, \textit{i} can be regarded as a ``pointer''. \texttt{v} is the expression which will replace the first variable in the global context. Therefore, \texttt{v} can only be defined in the context \texttt{tail Gglob}, since the substituted variable must not occur free in \texttt{v}. Finally, we can return an \texttt{Expr (Glam ++ tail Gglob) t}, where the first variable in \texttt{Gglob} has been substituted, and thus does not appear in the context of the returned expression.
-
-% As is apparent from Figure~\ref{fig:subst}, the most interesting case of \texttt{subst} is the \texttt{Var} case. \texttt{splitVar} is a function which identifies to which part of the context (either the local or the global part) a specific variable belongs. In shifting terms, this operation is similar to determining whether the variable is below or above the cutoff.
-
-% If the variable in question, \textit{y}, is below the cutoff (i.e. is in \texttt{Glam}), we can simply append \texttt{tail Gglob} to the variable and be done. If \textit{y} is above the cutoff, and thus in \texttt{Gglob}, we must determine whether it is the variable that we want to perform substitution on. This is handled by the \texttt{substGlobal} function in Figure~\ref{fig:substGlobal}. In \texttt{substGlobal}, our ``pointer'' predicate \textit{i} from earlier becomes crucial: If \textit{y} points to the same variable as \textit{i}, the type system can unify their types, \texttt{t} and \texttt{t'}. This means that the types of \texttt{e} and \texttt{v} from the definition of \texttt{subst} are equal, and thus \texttt{v} can be substituted for the variable in a type-safe manner.
+\begin{itemize}
+\item If \texttt{y} is local, we only need to append \texttt{tail Gglob} to the context of \texttt{y}, as per properties 2 and 3. This is equivalent to the \textit{otherwise} case in definition 6.2.4. Due to property 4, \texttt{y} matches the $k < c$ case of the variable case in definition 6.2.1, so no shifting needs to be performed.
+\item If \texttt{y} is global, then it might be the first variable in the global context, which means that \texttt{v} must be substituted for \texttt{y} (see property 2). We determine this by a call to the \texttt{substGlobal} function (Figure~\ref{fig:substGlobal}).
+\end{itemize}
 
 \begin{figure}
 \begin{alltt}
-    substGlobal : \{Gglob : Vect (S n) Tip\} \(\rightarrow\) HasType i Gglob t \(\rightarrow\) 
-                  HasType fZ Gglob t' \(\rightarrow\) Expr (tail Gglob) t' \(\rightarrow\) Expr (tail Gglob) t
+    substGlobal : \{Gglob : Vect (S n) Tip\} \(\rightarrow\) (y: HasType i Gglob t) \(\rightarrow\) 
+                  HasType fZ Gglob t' \(\rightarrow\) (v: Expr (tail Gglob) t') \(\rightarrow\) Expr (tail Gglob) t
     substGlobal stop    stop v = v
     substGlobal (pop y) stop v = Var y
 \end{alltt}
@@ -165,7 +166,9 @@ splitVar : \{G: Vect m Tip\} \(\rightarrow\) \{G': Vect n Tip\} \(\rightarrow\) 
 \label{fig:substGlobal}
 \end{figure}
 
-% If \textit{y} points to a different variable than \textit{i}, we shift it down by returning a \texttt{Var y} from a \texttt{pop y} predicate. So the result of \texttt{substGlobal} is either a shifted down variable or the expression \texttt{v}, both an \texttt{Expr (tail Gglob)}. What remains is to \texttt{weaken} this expression with \texttt{Glam}, such that the resulting expression has type \texttt{Expr (Glam ++ Gglob) t'}. \texttt{weaken} is shown in Figure~\ref{fig:weaken}.
+\texttt{substGlobal} performs two important tasks: (1) If \texttt{y} is indeed the first variable in the global context, then Idris's type system can unify \texttt{t} and \texttt{t'}, the types of \texttt{y} and \texttt{v}, since \texttt{v} has the same type as the first variable in \texttt{Gglob} (see type of \texttt{subst} or \texttt{substGlobal}). Hence substitution must be performed, which is equivalent to returning \textit{s} in the first case of definition 6.2.4. (2) If \texttt{y} is not the first variable, then \texttt{substGlobal} shifts it down (from \texttt{pop x} to \texttt{x}), to account for the substitution of the first variable. This has the same effect as explicitly adding a shift down on the evaluation rule for lambda abstractions, as suggested by Pierce\,\cite[p.~81]{Pierce:TypeSystems}.
+
+The value returned by \texttt{substGlobal} has type \texttt{Expr (tail Gglob) t}, regardless of whether substitution was performed. In accordance with properties 3 and 4, this value must now be shifted \textit{d} places up, where \textit{d} denotes the length of the local context, to obtain an \texttt{Expr (Glam ++ (tail Gglob)) t}. In the call to \texttt{weaken} (Figure~\ref{fig:weaken}) in \texttt{subst}, \texttt{prepend} performs the shifting corresponding to the $k \ge c$ case of the variable case in definition 6.2.1. \texttt{prepend} simply performs \texttt{pop} \textit{d} times on any variable in the input expression, resulting in a \textit{d}-place shift. \texttt{subst} calls \texttt{weaken} with \texttt{E} defined as initially empty and \texttt{F} as the local context.
 
 \begin{figure}
 \begin{alltt}
@@ -174,11 +177,30 @@ weaken : \{E: Vect m Tip, G: Vect n Tip\} -> (F: Vect o Tip) ->
 weaken {E} {G} F (Var x) = case splitVar x of
                              Left (k ** x') => Var $ append (append x' F) G
                              Right (k ** x') => Var $ prepend x' (E++F)
+weaken {t=TipFun x y} {E=E} F (Lam b) = Lam $ weaken {E=x::E} F b
+weaken F (App f v) = App (weaken F f) (weaken F v)
 \vdots
 \end{alltt}
 \caption{The \texttt{weaken} function. All other cases than \texttt{Var} have been omitted, as they are uninteresting.}
 \label{fig:weaken}
 \end{figure}
+
+Since we do not shift variables up whenever we go under a lambda abstraction, but instead shift up in the \texttt{Var} case, the lambda abstraction and application cases from definition 6.2.4 are as trivial as shown in \texttt{subst}.
+
+% The first case of definition 6.2.4 is the \texttt{Var} case. Based on the idea behind the cutoff parameter for shifting, we handle the \texttt{Var} case by first observing that \texttt{e} must be defined in a local context of \textit{m} variables, \texttt{Glam}, and a global non-empty context, \texttt{Gglob}. The variable on which we perform substitution is always the first variable in \texttt{Gglob}. The local context is added to each time we go under a lambda abstraction (hence the name, Glam). Variables in \texttt{Glam} are by definition below the cutoff and variables in the global context \texttt{Gglob} are by definition equal to or above the cutoff.
+
+% We determine whether a variable is in \texttt{Glam} or \texttt{Gglob} by using the function \texttt{splitVar} (see Figure~\ref{fig:splitVar}). This function performs the same splitting as the first case in definition 6.2.1, returning a strengthened variable only parameterized by either the local or the global context, respectively. Because we always substitute on the first variable in \texttt{Gglob}, a local variable defined in \texttt{Glam} 
+
+
+%  We cannot do substitution in an empty global context, as we would have no variable to substitute. We always do substitution on the first variable in the global context, so \texttt{HasType fZ Gglob t'}, denoted by \textit{i}, is a membership predicate for the variable we wish to substitute. In this sense, \textit{i} can be regarded as a ``pointer''. \texttt{v} is the expression which will replace the first variable in the global context. Therefore, \texttt{v} can only be defined in the context \texttt{tail Gglob}, since the substituted variable must not occur free in \texttt{v}. Finally, we can return an \texttt{Expr (Glam ++ tail Gglob) t}, where the first variable in \texttt{Gglob} has been substituted, and thus does not appear in the context of the returned expression.
+
+% As is apparent from Figure~\ref{fig:subst}, the most interesting case of \texttt{subst} is the \texttt{Var} case. \texttt{splitVar} is a function which identifies to which part of the context (either the local or the global part) a specific variable belongs. In shifting terms, this operation is similar to determining whether the variable is below or above the cutoff.
+
+% If the variable in question, \textit{y}, is below the cutoff (i.e. is in \texttt{Glam}), we can simply append \texttt{tail Gglob} to the variable and be done. If \textit{y} is above the cutoff, and thus in \texttt{Gglob}, we must determine whether it is the variable that we want to perform substitution on. This is handled by the \texttt{substGlobal} function in Figure~\ref{fig:substGlobal}. In \texttt{substGlobal}, our ``pointer'' predicate \textit{i} from earlier becomes crucial: If \textit{y} points to the same variable as \textit{i}, the type system can unify their types, \texttt{t} and \texttt{t'}. This means that the types of \texttt{e} and \texttt{v} from the definition of \texttt{subst} are equal, and thus \texttt{v} can be substituted for the variable in a type-safe manner.
+
+
+% If \textit{y} points to a different variable than \textit{i}, we shift it down by returning a \texttt{Var y} from a \texttt{pop y} predicate. So the result of \texttt{substGlobal} is either a shifted down variable or the expression \texttt{v}, both an \texttt{Expr (tail Gglob)}. What remains is to \texttt{weaken} this expression with \texttt{Glam}, such that the resulting expression has type \texttt{Expr (Glam ++ Gglob) t'}. \texttt{weaken} is shown in Figure~\ref{fig:weaken}.
+
 
 \subsubsection{Multistepping}
 % MULTISTEP
