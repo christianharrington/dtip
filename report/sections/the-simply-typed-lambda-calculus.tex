@@ -7,9 +7,9 @@
 % 	- Uvirkende (Thomas tvang mig til at skrive dette dårlige ord)
 % - Extensions
 
-Our first task is to define what our programming language will include. After this, we will define a ``raw'' representation of this language. When we say ``raw'', we mean that we have not done any type checking yet, and will not use dependent types. This representation can be thought of as the output of a parser. 
+Our first task is to define precisely which features our programming language will include. After this, we will define a ``raw'' representation of this language. When we say ``raw'', we mean that we have not done any type checking yet, and will not use dependent types. This representation can be thought of as the output of a hypothetical parser. 
 
-As we have mentioned earlier, our programming language will be based on the simply typed lambda calculus, with several extensions. These extensions have not been chosen based on any specific design principles, instead they are simply there to make the language more expressive and interesting. The extensions are:
+As we have mentioned earlier, our programming language will be based on the simply typed lambda calculus, with several extensions. These extensions have not been chosen based on any specific design principles; instead, they are simply there to make the language more expressive and interesting. The extensions are:
 \begin{itemize}
 \item Base types\,\cite[pp. 117]{Pierce:TypeSystems}: Boolean, integer, and unit values.
 \item Operators: Select binary and unary primitive operators.
@@ -19,9 +19,9 @@ As we have mentioned earlier, our programming language will be based on the simp
 \item Recursive functions\,\cite[pp. 142]{Pierce:TypeSystems}: For constructing recursive functions.
 \end{itemize}
 
-It should be noted that the addition of the last extension, recursion, has consequences. Notably, our language is no longer strongly normalizing, i.e. we do not know if a term in our language is total. For a full discussion of these consequences, see Section~\ref{sec:partiality}.
+It should be noted that the addition of the last extension, recursion, has consequences. Notably, our language is no longer strongly normalizing, i.e. we do not know if evaluation of a term will halt in finite number of steps. For a full discussion of these consequences, see Section~\ref{sec:partiality}.
 
-Now that we have defined our programming language, we need a way to represent it abstractly. In Figure~\ref{fig:rstlc}, a naïve, raw representation is given. The \verb+--+ characters denote a comment, which in this case list which extension a given term is enabling.
+Now that we have defined our programming language, we need a way to represent it abstractly. In Figure~\ref{fig:rstlc}, the raw representation is given. The \verb+--+ characters denote a comment, which in this case list which extension a given term is enabling.
 
 \begin{center}
 \begin{figure}
@@ -44,20 +44,19 @@ data Expr : Type where
   If   : Expr \(\to\) Expr \(\to\) Expr \(\to\) Expr -- Conditional
   Fix  : Expr \(\to\) Expr                 -- Recursion
 \end{alltt}
-\caption{Idris definition of our programming language.}
+\caption{The raw representation of our programming language in Idris.}
 \label{fig:rstlc}
 \end{figure}
 \end{center}
 
-Besides these terms, there are data types for representing various binary and unary operations, such as \texttt{Plus}, \texttt{Minus} and so on. A very simple function that adds some number to a fixed value can be represented with \texttt{Lam (OpB (Plus (Var 1) (Val 5)))}. The problem with this representation of our programming language is that it is too permissive. It lets us write completely nonsensical expressions, such as \texttt{Lam (OpB (Plus (Pair (Val 2) (Boo True)) Unit))}. How are you supposed to add the pair \texttt{(2, True)} to unit? Looking past this obviously incorrect example, lets go back to the first example. We have no idea if there is a variable at index 1, or if it does exist, it might be a boolean or some other type that we cannot add to 5. It is clear that with this representation, we will need numerous run time checks to make sure everything is in order. 
+Besides these terms, there are data types for representing various binary and unary operations, such as \texttt{Plus}, \texttt{Minus} and so on. A very simple function that adds some number to a fixed value can be represented with \texttt{Lam (OpB (Plus (Var 1) (Val 5)))}. The problem with this representation of our programming language is that it is too permissive. It lets us write completely nonsensical expressions, such as \texttt{Lam (OpB (Plus (Pair (Val 2) (Boo True)) Unit))}. How are you supposed to add the pair \texttt{(2, True)} to unit? Looking past this obviously incorrect example, lets go back to the first example. We have no idea if there is a variable at index 1, or if it does exist, it might be a Boolean or some other type that we cannot add to 5. It is clear that with this representation, we will need numerous run-time checks to make sure everything is in order. 
 
-We could run an expression in this representation through a type checker to find out if it was well typed or not, but instead we will show how we can use dependent types to define a well-typed representation, where it is impossible to build ill-typed expressions. This is an improvement, as we will be able to statically find errors in the handling of the representation. For example, when writing an optimization function for the well-typed expression language, we can not accidentally produce an ill-typed expression.
+We could run an expression in this representation through a type checker to find out if it was well-typed or not, but instead we will show how we can use dependent types to define a well-typed representation, where it is impossible to build ill-typed expressions. This is an improvement, as we will be able to statically find errors in the handling of the representation. For example, when writing an optimization function for the well-typed expression language, we can not accidentally produce an ill-typed expression. Specifically, our well-typed representation will guarantee:
 
-Specifically, our well-type representation will guarantee:
 \begin{itemize}
-\item All terms are well typed.
-\item Only variables in scope can be applied.
-\item Only lambda and case terms can introduce new variables.
+\item All terms are well-typed.
+\item Only variables in scope can be accessed.
+\item Only lambda and case terms can introduce new variables. \todo{David siger: "Perhaps make it clear that case is the elimination rule for a sum types."}
 \end{itemize}
 
 In the next section, we will specify this well-typed representation, and in Section~\ref{sec:type-checking} we will explore how we can transform this raw representation to the well-typed representation using a type checker.
