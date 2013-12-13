@@ -1,6 +1,6 @@
 %!TEX root = ../main.tex
 \subsection{Compile}
-Now that we have a representation for stack machine programs that tracks stack effects, we can translate our well-typed expression language to well-stacked programs. The compiler should translate an \texttt{Expr} to a program that transforms a zero-element stack and into to an $n$-element stack, with the remaining stack being the result of evaluation. Since programs are indexed by their stack effect there should be a correspondence between the stack effect of the returned program and the type of the input expression. This should be expressed by the type of our $compile$ function, for which we need to be able to construct program types with a stack effect based on arbitrary \todo{Reformulate} conditions. For this we use the follow representation of stack effects:
+Now that we have a representation for stack machine programs that tracks stack effects, we can translate our well-typed expression language to well-stacked programs. The compiler should translate an \texttt{Expr} to a program that transforms a zero-element stack and into to an $n$-element stack, with the remaining stack being the result of evaluation. Since programs are indexed by their stack effect there should be a correspondence between the stack effect of the returned program and the type of the input expression. This should be expressed by the type of our \texttt{compile} function, for which we need to be able to construct program types with a stack effect based on arbitrary conditions, such as the type of the input expression. For this we use the follow representation of stack effects:
 
 \begin{alltt}
 data Eff : Type where
@@ -14,23 +14,23 @@ getProg n (Dec m) = Prog (S (m + n)) n
 getProg n Flat    = Prog n n
 \end{alltt}
 
-The data type \texttt{Eff} represents a change in a value. It can either be increased ($Inc$), decreased ($Dec$), or remain unaltered ($Flat$). This is used to construct a program type with $getProg$, which based on a $Nat\;n$ and an \texttt{Eff e} results in a program type requiring n elements, and leaving an amount based on the \texttt{Eff} on the stack. It is worth noting that $getProg$ treats the $Inc$ and $Dec$ constructors as being zero indexed. This means that \texttt{getProg 0 (Inc 0)} will result in \texttt{Prog 0 1}. With this we can construct program types that are based on a starting state and an effect.
+The data type \texttt{Eff} represents a change in a value. It can either be increased (\texttt{Inc}), decreased (\texttt{Dec}), or remain unaltered (\texttt{Flat}). This is used to construct a program type with \texttt{getProg}, which based on a \texttt{Nat n} and an \texttt{Eff e} results in a program type requiring n elements, and leaving an amount based on the \texttt{Eff} on the stack. It is worth noting that \texttt{getProg} treats the \texttt{Inc} and \texttt{Dec} constructors as being zero indexed. This means that \texttt{getProg 0 (Inc 0)} will result in \texttt{Prog 0 1}. With this we can construct program types that are based on a starting state and an effect.
 
-In order to use this for constructing programs based on expression types, all we have to do is write a function translating a $Tip$ to an \texttt{Eff}:
+In order to use this for constructing programs based on expression types, all we have to do is write a function translating a \texttt{Tip} to an \texttt{Eff}:
 
 \begin{alltt}
+partial
 getEff : Tip \(\rightarrow\) Eff
-getEff TipUnit        = Flat
-getEff TipInt         = Inc 0
-getEff TipBool        = Inc 0
-getEff (TipProd T T\('\)) = Inc 1
-getEff (TipSum T T\('\))  = Inc 1
-getEff (TipFun T T\('\))  = getEff T\('\)
-\end{alltt}\todo{getEff might be wrong. In text below, explain getEff results.}
+getEff TipUnit = Flat
+getEff TipInt  = Inc 0
+getEff TipBool = Inc 0
+\end{alltt}
 
-With this we can create a type of program based on a $Tip\;t$ requiring $s$ elements with \texttt{getProg s (getEff t)}, which allows us to compute the stack effect of a program from the type of its source expression.
+Note that \texttt{getEff} is partial. This is because our stack machine does not cover our entire expression language. This will be further discussion in Section~\ref{sec:omissions}.
 
-Since our expression language contains lambda functions and applications our $compile$ must be able to remember the applied expression and then substitute it in when appropriate. This means that we need some sort of stack frame to store these expressions. We know that there is a correspondence between the size of the stack frame and the type environment of the expression, so this should be enforced. At first glance a vector of expressions might seem like an obvious solution. However, this does not work, because each element in the vector could have a different type. This could be solved by using a $sum\;type$ (or $dependent\;pair$)\,\cite[p. 14]{Brady:IdrisTutorial}, by essentially having the type of each expression being existentially quantified. This, nevertheless, does not seem like an ideal solution. Representing the stack frame as a vector of programs yields the same issue.
+With this we can create a type of program based on a \texttt{Tip t} requiring $s$ elements with \texttt{getProg s (getEff t)}, which allows us to compute the stack effect of a program from the type of its source expression.
+
+Since our expression language contains lambda functions and applications our \texttt{compile} must be able to remember the applied expression and then substitute it in when appropriate. This means that we need some sort of stack frame to store these expressions. We know that there is a correspondence between the size of the stack frame and the type environment of the expression, so this should be enforced. At first glance a vector of expressions might seem like an obvious solution. However, this does not work, because each element in the vector could have a different type. This could be solved by using a \emph{sum type} (or \emph{dependent pair})\,\cite[p. 14]{Brady:IdrisTutorial}, by essentially having the type of each expression being existentially quantified. This, nevertheless, does not seem like an ideal solution. Representing the stack frame as a vector of programs yields the same issue.
 
 To solve this we must take advantage of another correspondence between the stack frame and the environment. Not only do the two have the same size, \todo{Unclear?}but since our expression language only works on closed terms we know that there is a one to one correspondence between the type in the environment and the type of the expression in the stack frame. We can enforce this statically with the following data type:
 
@@ -40,10 +40,11 @@ data StackFrame : Vect n Tip -> Nat -> Type where
 	(:::) : Expr G t -> StackFrame G n -> StackFrame (t :: G) (S n)
 \end{alltt}
 
-With this type a stack frame, the relationship between the expression environment and the type of expressions in the stack frame is enforced. As such, compiling a program means given an expression of type $t$, a stack frame matching the expressions environment, will result in a program matching the stack effect of the type, giving us the signature seen in Figure~\ref{fig:compile_function}. It important to note that not all parts of the expression language is covered by our compile function. This will be discussed further in Section~\ref{sec:omissions}. Similarly to constructing and appending programs, the $s$ is an implicit argument, allowing the type checker to find a value for $s$ fitting the effect of the type.
+With this type a stack frame, the relationship between the expression environment and the type of expressions in the stack frame is enforced. As such, compiling a program means given an expression of type $t$, a stack frame matching the expressions environment, will result in a program matching the stack effect of the type, giving us the signature seen in Figure~\ref{fig:compile_function}. It important to note that not all parts of the expression language is covered by our compile function. This is as previously mentioned because our stack machine does not cover all parts of the expression language. Similarly to constructing and appending programs, the $s$ is an implicit argument, allowing the type checker to find a value for $s$ fitting the effect of the type.
 
 \begin{figure}
 \begin{alltt}
+partial
 compile : Expr G t -> StackFrame G n -> getProg s (getEff t)
 compile U                 sf    = StackMachine4.Nil
 compile (Val i)           sf    = [PUSH i]
@@ -69,5 +70,5 @@ compile (Var stop) {G = x :: xs} (e ::: sf) = compile e sf
 compile (Var (pop k)) (e ::: sf) = compile (Var k) sf
 \end{alltt}
 \label{fig:compile_function}
-\caption{Our compile function.}
+\caption{Our compile function. It is partial as it does not cover all constructors of \texttt{Expr}. \texttt{compileOp} is partial since it calls \texttt{compile}.}
 \end{figure}

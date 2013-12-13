@@ -37,27 +37,33 @@ effPlus (Dec Z) (Inc Z) = Flat
 effPlus (Dec (S x)) (Inc (S y)) = effPlus (Dec x) (Inc y)
 effPlus (Dec (S x)) (Inc Z) = Dec x
 
-mutual
-  data Inst : Nat -> Nat -> Type where
-    PUSH : Int -> Inst s         (S s)
-    ADD  :        Inst (S (S s)) (S s)
-    SUB  :        Inst (S (S s)) (S s)
-    MUL  :        Inst (S (S s)) (S s)
-    DIV  :        Inst (S (S s)) (S s)
-    EQL  :        Inst (S (S s)) (S s)
-    LTH  :        Inst (S (S s)) (S s)
-    NAY  :        Inst (S s)     (S s)
-    IF   :        Inst (S (S (S s))) (S s)
-    FST  : {e : Eff} -> Nat -> Inst (stackReq e s) (stackProduce e s)
-    SND  : (e : Eff) -> Nat -> Inst (stackReq e s) (stackProduce e s)
+using(E: Vect n Eff)
+  data HasEffect : Vect n Eff -> Eff -> Type where
+    stop : HasEffect (e :: E) e
+    pop  : HasEffect E e -> HasEffect (f :: E) e
 
-  partial
-  constructInst : Eff -> Nat -> Type
-  constructInst Flat n = Inst n n
+  mutual
+    data Inst : Nat -> Nat -> Type where
+      PUSH : Int -> Inst s         (S s)
+      ADD  :        Inst (S (S s)) (S s)
+      SUB  :        Inst (S (S s)) (S s)
+      MUL  :        Inst (S (S s)) (S s)
+      DIV  :        Inst (S (S s)) (S s)
+      EQL  :        Inst (S (S s)) (S s)
+      LTH  :        Inst (S (S s)) (S s)
+      NAY  :        Inst (S s)     (S s)
+      IF   :        Inst (S (S (S s))) (S s)
+      FST  : {e : Eff} -> Nat -> Inst (stackReq e s) (stackProduce e s)
+      SND  : (e : Eff) -> Nat -> Inst (stackReq e s) (stackProduce e s)
+      CALL : (e : Eff) -> HasEffect E e -> Inst (stackReq e s) (stackProduce e s)
 
-  data Prog : Nat -> Nat -> Type where
-    Nil  : Prog s s
-    (::) : Inst s s' -> Prog s' s'' -> Prog s s''
+    partial
+    constructInst : Eff -> Nat -> Type
+    constructInst Flat n = Inst n n
+
+    data Prog : Nat -> Nat -> Type where
+      Nil  : Prog s s
+      (::) : Inst s s' -> Prog s' s'' -> Prog s s''
 
 infixr 10 +++
 (+++) : Prog s s' -> Prog s' s'' -> Prog s s''
@@ -146,7 +152,6 @@ using (G: Vect n Tip)
   compile (Var stop) {G = x :: xs} (e ::: sf) = compile e sf
   compile (Var (pop k)) (e ::: sf) = compile (Var k) sf
   compile (Fst e) {t=TipInt} sf = (FST Z {e=(getEff TipInt)}) :: (compile e sf)
-  
   --compile (Fst (Var stop)) ((Pair e _) ::: sf) = compile e sf
   --compile (Fst (Var (pop k)) (e ::: sf)) compile (Fst k) sf
   

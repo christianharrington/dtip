@@ -2,35 +2,13 @@
 \subsection{Running a program}
 \label{sec:running_a_program}
 % Running a program
-Now that we have a way of representing programs, and a function for converting our expression language to this representation ($compile$), we need a way of executing a program. A function running a program must use the information encoded into the indices of the type of the program to ensure no stack underflow. This means that no program should be runnable without a supplied stack satisfying the programs requirements. As such we can define an invariant dictating that a function $run$ taking a program $Prog\;s\;s'$, and a stack of size $s$ will result in a stack of size $s'$. This invariant can be seen in Figure~\ref{fig:run_function}. We use the build-in vector type from Idris to represent the stack as this allows us to specify the size of the stack. The items on the stack are, as previously mentioned all $integers$\todo{Actually mention this, and specify what kind of integer}. 
+Now that we have a way of representing programs, and a function for converting our expression language to this representation ($compile$), we need a way of executing a program. A function running a program must use the information encoded into the indices of the type of the program to ensure no stack underflow. This means that no program should be runnable without a supplied stack satisfying the programs requirements. As such we can define an invariant dictating that a function $run$ taking a program $Prog\;s\;s'$, and a stack of size $s$ will result in a stack of size $s'$. This invariant can be seen in Figure~\ref{fig:run_function}. We use the build-in vector type from Idris to represent the stack as this allows us to specify the size of the stack. For the sake of simplicity all values on the stack are represented by the built-in Idris integer. 
 
 \begin{figure}
 \begin{alltt}
 run : Prog s s' -> Vect s Int -> Vect s' Int
-run (PUSH v :: is) vs               = run is (v :: vs)
-run (ADD    :: is) (v1 :: v2 :: vs) = run is ((v1 + v2) :: vs)
-run (SUB    :: is) (v1 :: v2 :: vs) = run is ((v2 - v1) :: vs)
-run (MUL    :: is) (v1 :: v2 :: vs) = run is ((v1 * v2) :: vs)
-run (DIV    :: is) (v1 :: v2 :: vs) = run is ((cast ((cast v2) / (cast v1))) :: vs)
-run (EQL    :: is) (v1 :: v2 :: vs) = let b = case (v1 == v2) of
-                                                   True  => 1
-                                                   False => 0
-                                              in run is (b :: vs)
-run (LTH    :: is) (v1 :: v2 :: vs) = let b = case (v1 < v2) of
-                                                   True  => 1
-                                                   False => 0
-                                              in run is (b :: vs)
-run (NAY    :: is)        (v :: vs) = let b = case v of
-                                                   0 => 1
-                                                   _ => 0
-                                              in run is (b :: vs)
-run (IF     :: is)        (b :: e1 :: e2 :: vs) = let v = case b of
-                                                   0 => e1
-                                                   _ => e2
-                                              in run is (v :: vs)
-run []             vs                 = vs
 \end{alltt}
-\caption{Our run function. The first argument is the function to be run, and the second argument is the stack for the program to be run on. The result is the stack after the program has been run.}
+\caption{The signature of our run function. The first argument is the function to be run, and the second argument is the stack for the program to be run on. The result is the stack after the program has been run.}
 \label{fig:run_function}
 \end{figure}
 

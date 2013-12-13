@@ -1,20 +1,23 @@
 %!TEX root = ../main.tex
 \subsection{Omissions}
 \label{sec:omissions}\todo{Update omissions to most recent work before hand-in}
-As previously mentioned our compile function, and thereby our stack machine, does not cover our entire well-typed expression language. Specifically the sum type, product type, and fixed point representations are not handled. 
+As previously mentioned our \texttt{compile} function, and thereby our stack machine, does not cover our entire well-typed expression language. Specifically the sum type, product type, and fixed point representations are not handled. 
 
 \paragraph{Sum and Product Types}
-These could be handled in two different ways. Either run both branches, choose one, and throw the result of the other one away, or make the decision before running a branch. This is a matter of whether the operator that chooses a branch (i.e. Fst or Snd) is before or after the branches in the program. Both ways have complications when working with our well-stacked stack machine. 
+These could be handled in two different ways. Either run both branches, choose one, and throw the result of the other one away, or make the decision before running a branch. This is a matter of whether the operator that chooses a branch (i.e. \texttt{Fst} or \texttt{Snd}) is before or after the branches in the program. Both ways have complications when working with our well-stacked stack machine. 
 
-The first will cause issues in terms of the stack effect of an instruction. Since the result of one branch will need to be thrown away, the instruction choosing a branch will have the effect of consuming one branch (the one thrown away). This is inconsistent with our invariant when compiling which dictates that, compiling any expression will result in an instruction with an effect corresponding to the type of the compiled expression. 
+The first will cause issues in terms of the stack effect of an instruction. Intuitively a simple pair of values \texttt{(a, b)} would have stack effect (0,2) and \texttt{Fst} and \texttt{Snd} would then have effect (2,1). This is inconsistent with our invariant when compiling which dictates that, compiling any expression will result in an instruction with an effect corresponding to the type of the compiled expression. Since i.e. \texttt{Fst} can have any type we cannot guarantee this.
 
-The former causes violations with the invariant when running, which states that running a program with stack effect $(s, s')$ on a stack of size $s$ must result in a stack of size $s'$. When throwing away the unwanted branch of the program, the resulting program might be inconsistent with the invariant since we have no way of knowing the stack effect of a program without a certain amount of instructions. % There may be a way to work around for both of these by altering the invariants, but such solutions are likely to result in obscure code\todo{Consider explaining why, or reformulate}. 
+
+Since the result of one branch will need to be thrown away, the instruction choosing a branch will have the effect of consuming one branch (the one thrown away). This is inconsistent with our invariant when compiling which dictates that, compiling any expression will result in an instruction with an effect corresponding to the type of the compiled expression. 
+
+The former causes violations with the invariant when running, which states that running a program with stack effect $(s, s')$ on a stack of size $s$ must result in a stack of size $s'$. When throwing away the unwanted branch of the program, the resulting program might be inconsistent with the invariant since we have no way of knowing the stack effect of a program without a certain amount of instructions.
 
 \paragraph{Fixed points}
-Compiling a fixed point for a stack machine that is not well-stacked is fairly straight forward. If treated like a function call, simply have a \texttt{CALL} instruction pointing to the start of the function with a conditional. With our well-stacked machine this is not as simple. Since our instructions are indexed by their stack effect, what stack effect would such a \texttt{CALL} instruction have? 
+Compiling a fixed point for a stack machine that is not well-stacked is fairly straightforward. If treated like a function call, simply have a \texttt{CALL} instruction pointing to the start of the function with a conditional. With our well-stacked machine this is not as simple. Since our instructions are indexed by their stack effect, what stack effect would such a \texttt{CALL} instruction have? 
 
 \paragraph{Possible Solution}
-Both of the above issues could be solved by having an instruction where the effect is based on some parameter. We can use our previously defined \texttt{Eff} type for this. Consider the two functions, \texttt{stackReq} and \texttt{stackProduce}, in Figure~\ref{fig:stack_effect_functions}. These function produce a natural number based on an \texttt{Eff} and a natural number. These can be used to construct a variable instruction based on an \texttt{Eff} also seen in Figure~\ref{fig:stack_effect_functions}. The second parameter (\texttt{Nat}) in \texttt{CALL} indicates how to locate the function being called.
+Both of the above issues could be solved by having an instruction where the effect is based on some parameter. We can use our previously defined \texttt{Eff} type for this. Consider the two functions, \texttt{stackReq} and \texttt{stackProduce}, in Figure~\ref{fig:stack_effect_functions}. These functions produce a natural number based on an \texttt{Eff} and a natural number. These can be used to construct a variable instruction based on an \texttt{Eff} also seen in Figure~\ref{fig:stack_effect_functions}. 
 
 \begin{figure}
 \begin{alltt}
@@ -29,20 +32,34 @@ stackReq Flat n = n
 stackReq (Dec Z) n = S n
 stackReq (Dec m) n = S (m+n)
 stackReq (Inc x) n = n
-
-CALL : (e : Eff) -> Nat -> Inst (stackReq e s) (stackProduce e s)
 \end{alltt}
-\caption{Functions creating natural numbers from \texttt{Eff}s used for indexing instructions and the signature for a \texttt{CALL} instruction with variable indices based on an \texttt{Eff}.}
+\caption{Functions creating natural numbers from \texttt{Eff}s used for indexing instructions.}
 \label{fig:stack_effect_functions}
 \end{figure}
 
-This \texttt{CALL} instruction can be used to implement function calls, and thereby fixed points from our expression language. To do this we must also have a way of mapping the aforementioned \texttt{Nat} parameter to an actual function. To do this we need an additional layer of abstraction of programs. We introduce a program vector which is a vector of \texttt{Prog s s'}s, where each element in the vector can be thought of as a function. \texttt{CALL} $n$ would then execute the program that is $n$ further down the vector as illustrated in Figure~\ref{fig:program_structure}.
+We can use these functions to create a \texttt{CALL} instruction with a stack effect based on an \texttt{Eff}. This \texttt{CALL} instruction can be used to implement function calls, and thereby fixed points from our expression language. To do this we need an additional layer of abstraction to our current program representation. We introduce a program vector which is a vector of \texttt{Prog s s'}s, where each element in the vector can be thought of as a function. For this to work we need to encode more information into the \texttt{CALL} instruction. Firstly we need a program environment which contains the programs this instruction can \emph{call}. Secondly we need an index into this environment to specify what function to call.
+
+In Section~\ref{sec:a-well-typed-expression-language} we describe how variables are represented in our expression language by using a predicate, modeling De Bruijn indices. We can use the same approach for function calls as well, by having our \texttt{CALL} instruction parametrized by a membership predicate on its enclosing environment. This can be used as a intrinsic proof that a program at a given position in the environment has a given specific stack effect. 
 
 \begin{figure}
 \begin{alltt}
-p 0: [PUSH 2, CALL e 1, ADD]
+data HasEffect : Vect n Eff -> Eff -> Type where
+    stop : HasEffect (e :: E) e
+    pop  : HasEffect E e -> HasEffect (f :: E) e
+
+CALL : (e : Eff) -> HasEffect E e -> Inst (stackReq e s) (stackProduce e s)
+\end{alltt}
+\caption{\texttt{HasEffect} membership predicate and \texttt{CALL} instruction with variable indices based on an \texttt{Eff}.}
+\label{fig:call}
+\end{figure}
+
+Figure~\ref{fig:call} shows this membership predicate (\texttt{HasEffect}) and an instruction used for function calls. For constructing a \texttt{CALL} instruction we need an \texttt{Eff} and our membership predicate. For the sake of simplicity we will henceforth use a numerical representation for the index (i.e. \texttt{stop} is \texttt{0}, \texttt{pop stop} is \texttt{1} etc.).
+
+\begin{figure}
+\begin{alltt}
+p 0: [PUSH 2, CALL (Inc 0) 1, ADD]
      ::
-p 1: [PUSH 1, CALL e 2, ADD]
+p 1: [PUSH 1, CALL (Inc 0) 2, ADD]
      ::
 p 2: Nil
      ::
@@ -54,14 +71,14 @@ p 4: Nil
 \label{fig:program_structure}
 \end{figure}
 
-In this example, \texttt{p 0} is the main program. \texttt{CALL e 1} indicates a call to the next program in the program vector, \texttt{p 1}. \texttt{p 1} contains the instruction \texttt{CALL e 2}, which indicates another call this time to the program two further down the program vector. Note that this is a call to \texttt{p 3} as \texttt{CALL}s parameter is relative to the current program, and not a global index in the program vector. 
+In the example Figure~\ref{fig:program_structure}, \texttt{p 0} is the main program. \texttt{CALL (Inc 0) 1} indicates a call to the next program in the program vector with stack effect \texttt{(s,~S~s)}, \texttt{p 1}. \texttt{p 1} contains the instruction \texttt{CALL (Inc 0) 2}, which indicates another call this time to the program two further down the program vector. Note that this is a call to \texttt{p 3} as \texttt{CALL}s parameter is relative to the current program, and not a global index in the program vector. 
 
-Compiling a fixed point expression from Figure~\ref{fig:idris-def-expr-lang} (\texttt{Fix e}) then would mean constructing a \texttt{CALL} instruction based on type of the expression and compiling the function \texttt{e} and adding it to the program vector. Since the stack effect of a type and a program resulting in the same type are identical, the effect of the \texttt{CALL} instruction and the compiled program will also be identical. When running the program this will allow this correspondence between effects will allow us to run the function in the place of a call as their stack effects match.
+Compiling a fixed point expression from Figure~\ref{fig:idris-def-expr-lang} (\texttt{Fix e}) would therefore mean constructing a \texttt{CALL} instruction based on type of the expression, after which the expression \texttt{e} is compiled and added to both the program vector, and environment. Since the type of the expression when compiled gives the resulting program its stack effect, the effect of the \texttt{CALL} instruction and the compiled program will be identical. When running the program this correspondence between effects will allow us to run the function in the place of a call, as their stack effects match.
 
 To ensure that \texttt{CALL} will not refer to a program not existing in the program instructions must also be indexed by the context they exist in. This way it can be enforced that the \texttt{Nat} in the \texttt{CALL} constructor will not be higher than the size of the program vector, possibly using a finite set instead of a \texttt{Nat}.
 
 Note that since we can only call programs further down the program vector, mutual recursion is not possible. Regular recursion is available through \texttt{CALL~e~0}.
 
-Interestingly enough the above way of handling function calls also works for pairs and sum types, by for example treating each part of a pair as a function, and \texttt{Fst} and \texttt{Snd} as function calls.
+Interestingly enough the above way of handling function calls also works for product and sum types. For example, treating each part of a product types as a function, and then \texttt{Fst} and \texttt{Snd} as function calls would be a way to implement this.
 
-It is clear that implementing this would involve revamping most parts of the system to handle a program vector rather than just a program. Therefore, this has not been done due to time constraints. It is an excellent opportunity for future projects.
+It is worth noting that this has not been fully implemented due to time constraints. The shown implementations of \texttt{stackReq}, \texttt{stackProduce}, \texttt{HasEffect}, and \texttt{CALL} are all accepted by the Idris type checker, but there might be complications when implementing the rest of this requiring alterations to these. Furthermore, fully implementing this would involve revamping many parts of our stack machine implementation to handle a program vector rather than just a program.
