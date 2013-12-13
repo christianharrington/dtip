@@ -6,21 +6,112 @@
 % - De Bruijn (HasType)
 % - INTERP?
 
+We will begin this section by asking a fundamental question.
+
 \subsection{Why Do We Want Types?}
 Programming in an untyped setting allows for immense freedom of expression, but provides very few guarantees. The cost of this freedom comes at run time, where all bets are off: Your program is equally likely to terminate successfully, terminate abnormally, or not terminate at all. If we add types into the equation, this picture changes. Types provide static information about the shape and possible values of a term, and this information can be used at compile time to make sure that the internal structure of a program does not cause it to terminate abnormally (naturally, adding types does not solve the halting problem)\todo{Maybe reference}.
 
-Specifically, a well-typed program does not \emph{go wrong}\,\cite{Milner78atheory}. If we can provide every term with a type, and check that this typing is consistent with the rest of the program, then we can be assured that the program in its entirety does not go wrong. In other words, a type system provides \emph{safety}. Pierce\,\cite[Section~8.3]{Pierce:TypeSystems} characterizes type safety by two properties: (1) Progress and (2) Preservation\todo{Is this true?}. Progress means that a well-typed term is either a value or that we can take a step of evaluation (i.e. it can always make progress if needed). Preservation says that \emph{if} a term takes a step of evaluation, then the resulting term is also well-typed.
+As specified by Milner, a well-typed program does not \emph{go wrong}\,\cite{Milner78atheory}. If we can provide every term with a type, and check that this typing is consistent with the rest of the program, then we can be assured that the program in its entirety does not go wrong. In other words, a type system provides \emph{safety}. Pierce\,\cite[Section~8.3]{Pierce:TypeSystems} characterizes type safety by two properties: (1) Progress and (2) Preservation. Progress means that a well-typed term is either a value or that we can take a step of evaluation (i.e. it can always make progress if needed). Preservation says that \emph{if} a term takes a step of evaluation, then the resulting term is also well-typed. Note that this is just one way of defining type safety. Strictly speaking, preservation is not needed for every step of evaluation in order to claim type safety\todo{Citation needed?}, but in our setting preservation makes sense.
 
-Hence, if we can provide a consistent typing for every term of a program within a type system that is safe, our program does not go wrong, i.e. it will not end in a stuck state. 
+Nevertheless, if we can provide a consistent typing for every term of a program within a type system that is safe, our program does not go wrong, i.e. it will not end up in a stuck state. 
 
 \subsection{Making The Representation Well-Typed}
-As mentioned in the previous section, the main motivation behind defining a well-typed representation is the ability to create terms that are correct by construction. This means that whenever we construct a term, we have the added guarantee that it is well-typed. Accordingly, it is impossible to construct a term that is not well-typed. This representation is inspired by Augustsson and Carlsson\,\cite{Augustsson99anexercise}.
+As mentioned in the previous section, the main motivation behind defining a well-typed representation is the ability to create terms that are correct by construction, and later, the possibility of defining a well-typed interpreter. This means that whenever we construct a term, we have the added guarantee that it is well-typed. Accordingly, it is impossible to construct a term that is not well-typed. The representation presented here is inspired by Augustsson and Carlsson's approach to defining a well-typed interpreter\,\cite{Augustsson99anexercise}.
+
+
+\subsubsection{Well-Typed Expressions}
+
+%An expression is well-typed if its subterms are well-typed with respect to their enclosing environment\,\cite{Milner78atheory}. 
+%We will see how this property is handled by first considering a well-typed representation of the core simply typed lambda calculus:
+
+Our first goal is to create a well-typed represetation of the simply typed lambda calculus. To achieve this, let us first consider the typing rules for it given in Section~\ref{sec:stlc}. These say that we can construct the term given in the conclusion if all the premises hold. Specifically, they say:
+
+\begin{enumerate}
+\item A variable can be constructed if it is defined in the type environment $\Gamma$
+\item A lambda abstraction of type $t \to t'$ can be constructed if we can construct a term of type $t'$ that is closed under $\Gamma$ where $t$ is added
+\item We can construct a term of type $t'$ by applying a term of type $t$ to a term of type $t \to t'$ 
+\end{enumerate}
+
+A well-typed representation needs to be expressive enough to make sure that the above constraints hold whenever we try to construct a term. So what we want is a way to represent these logical rules within the type system. Luckily, due to the Curry-Howard correspondence such a representation is a straightforward translation of the typing rules into a predicate in Idris. Note that the Curry-Howard correspondence means that defining a predicate is isomorphic to defining a data type. A data type representing the typing rules of the simply typed lambda calculus is shown in Figure~\ref{fig:well-typed-stlc}. Here, \texttt{Tip} represents the internal types of the language, i.e. the types that a term can be given.
 
 \begin{figure}
 \begin{alltt}
   data Tip = TipUnit | TipBool | TipInt 
            | TipProd Tip Tip | TipSum Tip Tip | TipFun Tip Tip
 
+  data Expr : Vect n Tip \(\rightarrow\) Tip \(\rightarrow\) Type where
+    Var : HasType i G t \(\rightarrow\) Expr G t
+    Lam : Expr (t :: G) t' \(\rightarrow\) Expr G (TipFun t t')
+    App : Expr G (TipFun t t') \(\rightarrow\) Expr G t \(\rightarrow\) Expr G t'
+\end{alltt}
+\caption{A dependently typed representation of the simply typed lambda calculus. This forms the core of what we call the well-typed representation.}
+\label{fig:well-typed-stlc}
+\end{figure}
+
+If we examine more closely the typing rules from Section~\ref{sec:stlc}, we will discover that all the terms have two properties in common: (1) they are all defined in the type environment $\Gamma$, and (2) they all have a type. The important observation here is that the definition of a term \emph{depends} on these two. Accordingly, we can construct a dependent type \texttt{Expr} which dependent on a type environment \texttt{Vect n Tip} (corresponding to $\Gamma$) and a type \texttt{Tip}. Recall from Section~\ref{sec:dependent-types-idris} that a term of type \texttt{Vect n a} is a vector containing \texttt{n} elements of type \texttt{a}. As such, the type of the type environment should make sense. To convince ourselves that this representation is in fact well-typed, let us map our representation to our three earlier observations:
+
+\begin{enumerate}
+\item A \texttt{Var} of type $t$ can be constructed if \texttt{HasType i G t}
+\item A \texttt{Lam} of type \texttt{TipFun t t'} can be constructed if we can construct a term of type $t'$ that is closed under $G$ where $t$ is added
+\item We can construct an \texttt{Expr G t'} by applying an \texttt{Expr G t} to an \texttt{Expr G (TipFun t t')}
+\end{enumerate}
+
+The \texttt{Var} case may not be intuitive at first sight --- We will return to it shortly. The \texttt{Lam} case is a straightforward translation of the typing rule, where the cons (\texttt{::}) constructor of the \texttt{Vect} representing the type environment is used for adding $t$ to $G$. The \texttt{App} case is equally unsurprising.
+
+\paragraph{}
+Now before we delve into greater details about this implementation, the seasoned Haskell user might point out that the above implementation could have been done entirely using a generalized algebraic data structure (GADT), avoiding the use of dependent types. A possible Haskell implementation is given in Figure~\ref{fig:stlc-GADT} (of course, a similar implementation could have been given in any language supporting GADTs).
+
+\begin{figure}
+\begin{alltt}
+data Expr :: * -> * where
+  gVar :: Integer -> Expr Integer
+  gLam :: (Expr a -> Expr b) -> Expr (a -> b)
+  gApp :: Expr (a -> b) -> Expr a -> Expr b	
+\end{alltt}
+\caption{Definition of the simply typed lambda calculus using a GADT. The names of the constructors have been prefixed with a 'g' to avoid confusion with the previously defined Idris data type}
+\label{fig:stlc-GADT}
+\end{figure}
+
+While this representation seems quite strong, GADTs only allow us to have types parameterized over types, while a dependently typed language allows for types to be parameterized over terms. As such, all the $a$'s and $b$'s in Figure~\ref{fig:stlc-GADT} are \emph{types}. In Haskell (as in most languages), totality is not enforced, so non-exhaustive pattern matches are compiled without warning (that is, unless we provide the \texttt{-fwarn-incomplete-patterns} flag, assuming GHC is used). This means that nothing prevents us from writing an expression like \texttt{gLam (\textbackslash{x} -> case x of 0 -> 0}). While this works fine as long as \texttt{x} is \texttt{0}, an exception occurs if we apply any other arguments. Accordingly, our earlier observation regarding the \texttt{App} case no longer holds: We cannot always construct another expression when applying a term to a \texttt{gLam}, as the function which the \texttt{gLam} is parameterized over might be partial. Partiality is discussed in-depth in Section~\ref{sec:partiality}. For now, the important point is that a dependently typed representation provides us with an added notion of safety, because lambda abstractions are not defined as Idris functions, but instead are modeled by adding a \emph{term} of type $t$ to the type environment $G$ (see Figure~\ref{fig:well-typed-stlc}).
+
+\subsubsection{Variables}
+Picking up where we left off, we will now discuss why the \texttt{Var} case in Figure~\ref{fig:well-typed-stlc} is well-typed. Remember that our initial observation about the typing rule for variables was that a variable can be constructed if it is defined in the type environment $\Gamma$. However, ``is defined'' is quite vague, and we need to define what it means for a variable to be defined in a type environment in a rigorous way. This is where \texttt{HasType} comes in, as it acts a membership predicate on a type environment. \texttt{HasType} is given in Figure~\ref{fig:HasType}.
+
+\begin{figure}
+\begin{alltt}
+  data HasType : (i : Fin n) \(\to\) Vect n Tip \(\to\) Tip \(\to\) Type where
+    stop : HasType fZ (t :: G) t
+    pop  : HasType k G t \(\to\) HasType (fS k) (u :: G) t
+\end{alltt}
+\caption{The \texttt{HasType} membership predicate.}
+\label{fig:HasType}
+\end{figure}
+
+The intuition behind \texttt{HasType} is that it models the premise $x~:~T~\in~\Gamma$ of the typing rule for variables presented in Section~\ref{sec:stlc}. It does this by defining two constructors: \texttt{stop} and \texttt{pop}. Before understanding how we can use \texttt{HasType}, we must define that we model variables using de Bruijn-indices\,\cite{Bruijn72lambdacalculus}. This is perhaps best illustrated by an example, which is provided in Figure~\ref{fig:HasType-use}. 
+
+\begin{figure}
+\begin{alltt}
+  a : Expr G (TipFun TipInt TipInt)
+  a = Lam (Var stop)                              -- is equivalent to \(\lambda.0\)
+  b : Expr G (TipFun (TipFun TipInt TipBool) (TipFun TipInt TipBool))
+  b = Lam (Lam (App (Var (pop stop)) (Var stop))) -- is equivalent to \(\lambda.\lambda.1 0\)
+\end{alltt}
+\caption{Use of \texttt{HasType}.}
+\label{fig:HasType-use}
+\end{figure}
+
+This illustration shows that we refer to the last bound variable (\texttt{0}) using \texttt{stop}, the next to last bound variable (\texttt{1}) using \texttt{pop stop}, and so on, adding a \texttt{pop} whenever we go one abstraction up. In this respect, the structure of \texttt{HasType} resembles that of the natural numbers which was introduced in Section~\ref{sec:dependent-types-idris}. Note that \texttt{HasType} only models the premise of the typing rule for variables, and must therefore be wrapped in a \texttt{Var} in order to become a term in the language.
+
+To be convinced that variables are correct by construction using the \texttt{HasType} predicate, we must discuss both typing and scoping. Whenever a variable is constructed, its internal type (created by a constructor of \texttt{Tip}) is inferred from the type annotation on its enclosing term. Consequently, the variable in the first example of Figure~\ref{fig:HasType-use} has type \texttt{TipInt}. In the second example, \texttt{pop stop} (and hence \texttt{Var pop stop}) is given the type \texttt{TipFun TipInt TipBool}, while \texttt{stop} is given the type \texttt{TipInt}. Since all types are inferred from the context, it is impossible to annotate an expression with a type that is not in correspondence with the way the variables are used. For instance, Idris's type checker will only accept \texttt{pop stop} to be a \texttt{TipFun x y}, as it acts as the first argument to \texttt{App}. It should be noted from the definition of \texttt{HasType} (see Figure~\ref{fig:HasType}) that the type of a \texttt{HasType} never changes, even when \texttt{pop}s are added or removed. 
+
+A correctly constructed variable must not only be well-typed, but also in scope. The definition of \texttt{HasType} tells us that neither \texttt{stop} nor \texttt{pop} can be constructed on an empty environment, as they both pattern match on the structure of the type environment in their types. Thus, we cannot reference variables from an empty environment, as an environment matching the cons (\texttt{::}) case is expected. Furthermore, we saw in Figure~\ref{fig:well-typed-stlc} that the \texttt{Lam} case is parameterized over a term which adds a type to the environment. This means that types are added to the environment when lambda abstractions are added, and removed when we go under a lambda abstraction. As such, we cannot reference variables that are out of scope, as this would mean constructing a \texttt{HasType} proof on an empty environment, which is impossible due to its definition. 
+
+We will conclude our discussion of variables by considering the distinction between free and bound variables. Both free and bound variables reside in the same environment, $G$. In an expression with \textit{n} lambda abstractions, the first \textit{n} variables in the environment are bound, while the remaining occur free. As it is only possible to construct closed terms, the total number of variables is bounded by the structure of the expression and the number of types in the initial environment.
+
+As mentioned in Section~\ref{sec:the-simply-typed-lambda-calculus}, we extend the simply typed lambda calculus with several extensions. A well-typed representation of the language in its entirety is shown in Figure~\ref{fig:idris-def-expr-lang}, and most of the cases should be immediately understandable. Only the \texttt{Case} case is somewhat interesting, as it adds a variable to the type environment in each of its branches. Since going into one of these branches if equivalent to going under a lambda abstraction, the properties of variables and lambda abstractions presented in this section directly translates to this case as well.
+
+\begin{figure}
+\begin{alltt}
   data Expr : Vect n Tip \(\rightarrow\) Tip \(\rightarrow\) Type where
     U    : Expr G TipUnit
     Var  : HasType i G t \(\rightarrow\) Expr G t
@@ -44,74 +135,61 @@ As mentioned in the previous section, the main motivation behind defining a well
 \end{figure}
 
 
-\subsubsection{Well-Typed Expressions}
-A well-typed representation of our programming language in Idris is given in Figure~\ref{fig:idris-def-expr-lang} (the definitions of \texttt{UnOp} and \texttt{BinOp} have been omitted for brevity). \texttt{Tip} represents the internal types of the language, and \texttt{Expr} describes all the terms of the language (since all terms are expressions).
+% The definition of \texttt{Expr} specifies that any term is represented in the type system by (1) its enclosing environment of \textit{n} (de Bruijn-indexed) variables and (2) an internal type, i.e. a \texttt{Tip}. To make the distinction clear, we denote inhabitants of \texttt{Tip} as internal types, and all other Idris types as external types.
 
-An expression is well-typed if its subterms are well-typed with respect to their enclosing environment\,\cite{Milner78atheory}. We will see how this property is handled by first considering the type of \texttt{Expr}:
+% To see why this representation is well-typed, consider the typing rules for the simply typed lambda calculus given in Section~\ref{sec:stlc}. 
 
-\begin{alltt}
-  data Expr : Vect n Tip \(\rightarrow\) Tip \(\rightarrow\) Type where
-\end{alltt}
+% A variable is specified by its internal type in the environment. As such, we can only construct terms which are typed with respect to their enclosing environment. For atomic terms (values with no subterms), this property is sufficient to claim well-typedness. It is insufficient for terms with subterms, however, as these must also be well-typed.
 
-This definition specifies that any term is represented in the type system by (1) its enclosing environment of \textit{n} (de Bruijn-indexed) variables\todo{both free and bound? David siger: "what do you mean by this? the outermost context must provide types for all free variables, and the length of the context provides the set of free vars"} and (2) an internal type, i.e. a \texttt{Tip}. External types are all Idris types that are not part of \texttt{Tip}. A variable is specified by its internal type in the environment. As such, we can only construct terms which are typed with respect to their enclosing environment. For atomic terms (values with no subterms), this property is sufficient to claim well-typedness. It is insufficient for terms with subterms, however, as these must also be well-typed. Consider the Idris representation of the core simply typed lambda calculus, as described in Section~\ref{sec:stlc}:
+% MENTION TYPE REFINEMENT AND ENV
+% DESCRIBE WHY THIS REPRESENTATION IS WELL-TYPED
+% MENTION DIFFERENCE --- GADT
+% Pass empty type to GADT
 
-\begin{alltt}
-  data Expr : Vect n Tip \(\rightarrow\) Tip \(\rightarrow\) Type where
-    Var : HasType i G t \(\rightarrow\) Expr G t
-    Lam : Expr (t :: G) t' \(\rightarrow\) Expr G (TipFun t t')
-    App : Expr G (TipFun t t') \(\rightarrow\) Expr G t \(\rightarrow\) Expr G t'
-    \(\vdots\)  
-\end{alltt}
-\todo{David siger: "Consider presenting this first, then doing the big datatype"}
-Variables are represented by a membership predicate (\texttt{HasType}) on its enclosing environment. These will be discussed in-depth in the next subsection. Lambda abstractions (\texttt{Lam}) are parameterized by its body under a bound variable, and application (\texttt{App}) is parameterized by an expression of function type \texttt{TipFun t t'} and a parameter of type \texttt{t}, the argument type of the first parameter. Notably, none of these terms can be constructed without providing well-typed subterms which are also consistently typed with respect to their (sub-)subterms and their enclosing environments\todo{David siger: "Why not?"}.
+% Type rules are encoded as predicates
+% Curry-Howard
 
-Recall that if we can type every term \emph{and} check that this typing is consistent, our program does not go wrong. What the definition of the \texttt{Expr} type is really saying is that we cannot construct any term \emph{unless} its typing is consistent\todo{David siger: "what do you mean by consistent?"}. We rely on the internal Idris type checker to make sure that our program does not type check if we try to type any term inconsistently. So when we say we construct terms which are correct by construction, it is implied that the type of each term is consistent by construction\todo{David siger: "Everything you've done so far is achievable using GADTs, isn't it? Point out the difference, or at least that a difference is coming. "}.
+% \begin{enumerate}
+% \item Referencing a variable that is not in scope
+% \item Applying a function with an argument of the wrong type
+% \item Applying an argument to a term that is not a function
+% \end{enumerate}
+
+
+% Variables are represented by a membership predicate (\texttt{HasType}) on its enclosing environment. These will be discussed in-depth in the next subsection. Lambda abstractions (\texttt{Lam}) are parameterized by its body under a bound variable, and application (\texttt{App}) is parameterized by an expression of function type \texttt{TipFun t t'} and a parameter of type \texttt{t}, the argument type of the first parameter. Notably, none of these terms can be constructed without providing well-typed subterms which are also consistently typed with respect to their (sub-)subterms and their enclosing environments\todo{David siger: "Why not?"}.
+
+% Recall that if we can type every term \emph{and} check that this typing is consistent, our program does not go wrong. What the definition of the \texttt{Expr} type is really saying is that we cannot construct any term \emph{unless} its typing is consistent\todo{David siger: "what do you mean by consistent?"}. We rely on the internal Idris type checker to make sure that our program does not type check if we try to type any term inconsistently. So when we say we construct terms which are correct by construction, it is implied that the type of each term is consistent by construction\todo{David siger: "Everything you've done so far is achievable using GADTs, isn't it? Point out the difference, or at least that a difference is coming. "}.
+
  
 
-\subsubsection{Variables}
-%well-scoped - membership predicate HasType
-%free vs bound
-%REF - De Bruijn
+% \subsubsection{Variables}
+% %well-scoped - membership predicate HasType
+% %free vs bound
+% %REF - De Bruijn
 
-A variable in the well-typed representation is parameterized by a membership predicate, \texttt{HasType} (shown in Figure~\ref{fig:HasType}), on its enclosing environment. The predicate models de Bruijn indices\,\cite{Bruijn72lambdacalculus}, and can be seen as a way to provide an intrinsic proof that a variable at a given position has a certain type. Figure~\ref{fig:HasType-use} shows an example of its practical use. Note that HasType's constructors are similar to those of Nat, except their indices give strong guarantees.
+% A variable in the well-typed representation is parameterized by a membership predicate, \texttt{HasType} (shown in Figure~\ref{fig:HasType}), on its enclosing environment. The predicate models de Bruijn indices\,\cite{Bruijn72lambdacalculus}, and can be seen as a way to provide an intrinsic proof that a variable at a given position has a certain type. Figure~\ref{fig:HasType-use} shows an example of its practical use. Note that HasType's constructors are similar to those of Nat, except their indices give strong guarantees.
 
-\begin{figure}
-\begin{alltt}
-  data HasType : (i : Fin n) \(\rightarrow\) Vect n Tip \(\rightarrow\) Tip \(\rightarrow\) Type where
-    stop : HasType fZ (t :: G) t
-    pop  : HasType k G t \(\rightarrow\) HasType (fS k) (u :: G) t
-\end{alltt}
-\caption{The \texttt{HasType} membership predicate.}
-\label{fig:HasType}
-\end{figure}
 
-\begin{figure}
-\begin{alltt}
-  Lam (Var stop)                              is equivalent to \(\lambda.0\)
-  Lam (Lam (App (Var (pop stop)) (Var stop))) is equivalent to \(\lambda.\lambda.1 0\)
-\end{alltt}
-\caption{Use of \texttt{HasType}.}
-\label{fig:HasType-use}
-\end{figure}
 
-The use of \texttt{HasType} is an example of creating variables that are correct by construction. It is only possible to construct \texttt{HasType} instances which are both well-typed and well-scoped:
-\begin{itemize}
-\item If we look at the type of \texttt{stop}, it will always have the same type as the first variable in the environment --- this type can be deduced from the top-level annotation\todo{David siger: "I thought the annotration was elsewhere. Your Lam in fig 7 doesn't have a type annot"} of the lambda expression. In fact, a \texttt{HasType} predicate will always have a specific type which is consistent with the top-level type annotation, and thus it is well-typed. Idris's type system will detect any inconsistent use of a variable. 
-\item Only lambda abstractions and case-expressions on sum types push new variables onto the environment, which can be seen from their constructors: \texttt{Expr (t :: G) t' \(\rightarrow\) Expr G (TipFun t t')} and \texttt{Expr G (TipSum a b) \(\rightarrow\) Expr (a :: G) c \(\rightarrow\) Expr (b :: G) c \(\rightarrow\) Expr G c}. It is not possible to reference a variable which exceeds the number of these enclosing it. Therefore, it must be well-scoped. This argument still holds if an explicit initial environment is passed to an expression, as such an environment can always be substituted with an equivalent number of lambda abstractions.
-\end{itemize}
 
-\paragraph{Free and bound variables} Both free and bound variables reside in the same environment. In an expression with \textit{n} lambda abstractions and case-expressions, the first \textit{n} variables in the environment are bound, while the remaining occur free. As it is only possible to construct closed terms, the total number of variables is bounded by the structure of the expression and the initial environment.
+% The use of \texttt{HasType} is an example of creating variables that are correct by construction. It is only possible to construct \texttt{HasType} instances which are both well-typed and well-scoped:
+% \begin{itemize}
+% \item If we look at the type of \texttt{stop}, it will always have the same type as the first variable in the environment --- this type can be deduced from the top-level annotation\todo{David siger: "I thought the annotration was elsewhere. Your Lam in fig 7 doesn't have a type annot"} of the lambda expression. In fact, a \texttt{HasType} predicate will always have a specific type which is consistent with the top-level type annotation, and thus it is well-typed. Idris's type system will detect any inconsistent use of a variable. 
+% \item Only lambda abstractions and case-expressions on sum types push new variables onto the environment, which can be seen from their constructors: \texttt{Expr (t :: G) t' \(\rightarrow\) Expr G (TipFun t t')} and \texttt{Expr G (TipSum a b) \(\rightarrow\) Expr (a :: G) c \(\rightarrow\) Expr (b :: G) c \(\rightarrow\) Expr G c}. It is not possible to reference a variable which exceeds the number of these enclosing it. Therefore, it must be well-scoped. This argument still holds if an explicit initial environment is passed to an expression, as such an environment can always be substituted with an equivalent number of lambda abstractions.
+% \end{itemize}
+
+% \paragraph{Free and bound variables} 
 
 \subsection{Interpreting the Language}
-The challenge of interpreting the well-typed representation is that we do not want to lose the guarantee of well-typedness in the process. In general, our goal is to map each term of the language (defined in Figure~\ref{fig:idris-def-expr-lang}) to an equivalent Idris term. As shown by Augustsson and Carlsson\,\cite{Augustsson99anexercise}, a na\"{i}ve implementation might simply define the resulting type of the interpreter as a sum type, such as the Value type shown in Figure \ref{fig:naive-interpreter-impl}.
+The challenge of interpreting the well-typed representation is that we do not want to lose the guarantee of well-typedness in the process. In general, our goal is to map each term of the language (defined in Figure~\ref{fig:idris-def-expr-lang}) to an equivalent Idris term. As shown by Augustsson and Carlsson\,\cite{Augustsson99anexercise}, a na\"{i}ve implementation might simply define the resulting type of an interpreter for this representation as a sum type (wrapped in a \texttt{Maybe}), such as the Value type shown in Figure \ref{fig:naive-interpreter-impl}.
 
 \begin{figure}
 \begin{alltt}
 data Value : Type where
-  VBool : Int \(\rightarrow\) Value
-  VInt  : Bool \(\rightarrow\) Value
+  VBool : Int \(\to\) Value
+  VInt  : Bool \(\to\) Value
 
-interp : Expr G t -> Maybe Value
+interp : Expr G t \(\to\) Maybe Value
 interp (Val i) = VInt i
 interp (Boo b) = VBool b
 interp (If c tb fb) with (interp c)
@@ -123,13 +201,11 @@ interp (If c tb fb) with (interp c)
 \label{fig:naive-interpreter-impl}
 \end{figure}
 
-However, such an interpreter has several critical problems. First, given an \texttt{Expr} term, we have no static guarantee that we interpret it as an Idris term that makes sense. For instance, there is no compile-time guarantee that \texttt{interp (Boo True)} does not always result in \texttt{VInt 0}. Secondly, the type system cannot statically enforce that the resulting values are well-typed. In the If-case, we have to check whether the condition is in fact interpreted as a boolean. Otherwise, interpretation is undefined, which we handle by wrapping the resulting type in a \texttt{Maybe}.
-
-In a dependently typed setting, we can do much better, by using the added expressive power of the type system to our advantage.
+However, such an interpreter has several critical problems. First, given an \texttt{Expr} term, we have no static guarantee that we interpret it as an Idris term that makes sense. For instance, there is no compile-time guarantee that \texttt{interp (Boo True)} does not always result in \texttt{VInt 0}. Secondly, the type system cannot statically enforce that the resulting values are well-typed. In the If-case, we have to check whether the condition is in fact interpreted as a boolean. Otherwise, interpretation is undefined, which we handle by wrapping the resulting type in a \texttt{Maybe}. In a dependently typed setting, we can do much better, by using the expressive power of the type system to our advantage.
 
 \subsubsection{A Universe of Types}
 % Power of Pi
-Following Brady's example\,\cite{Brady:IdrisTutorial}, we first define a universe of internal types. Generally speaking, a universe is a pair of a type of types and a decoding function\,\cite{Oury:2008}. We have already defined \texttt{Tip} to describe our internal types in Figure~\ref{fig:idris-def-expr-lang}. Figure~\ref{fig:interpTip} shows the decoding function for our universe, \texttt{interpTip}.
+Following Brady's example\,\cite{Brady:IdrisTutorial}, we first define a universe of internal types (\texttt{Tip}). Generally speaking, a universe is a pair of a type of types and a decoding function\,\cite{Oury:2008}. We have already defined \texttt{Tip} to describe our internal types in Figure~\ref{fig:well-typed-stlc}. Figure~\ref{fig:interpTip} shows the decoding function for our universe, \texttt{interpTip}.
 
 \begin{figure}
 \begin{alltt}
@@ -139,35 +215,39 @@ interpTip TipBool        = Bool
 interpTip TipInt         = Int
 interpTip (TipProd T T') = (interpTip T, interpTip T')
 interpTip (TipSum T T')  = Either (interpTip T) (interpTip T')
-interpTip (TipFun T T')  = interpTip T \(\rightarrow\) interpTip T'
+interpTip (TipFun T T')  = interpTip T \(\to\) interpTip T'
 \end{alltt}
 \caption{The \texttt{interpTip} decoding function for our universe of internal types.}
 \label{fig:interpTip}
 \end{figure}
 
-We will use this universe to define a well-typed interpreter.
+\texttt{interpTip} is a great example of a function that actually evaluates to a type, and most of the cases are trivial. We use the built-in \texttt{Either} type to model sum types, and use the standard Idris notation for defining function types, $->$. This universe is used to define a well-typed interpreter, as shown in Figure~\ref{fig:well-typed-interpreter}.
 
 \begin{figure}
 \begin{alltt}
-data Env : Vect n Tip \(\rightarrow\) Type where
+data Env : Vect n Tip \(\to\) Type where
   Nil  : Env Nil
-  (::) : interpTip a \(\rightarrow\) Env G \(\rightarrow\) Env (a :: G)
+  (::) : interpTip a \(\to\) Env G \(\to\) Env (a :: G)
 
-lookup : HasType i G t \(\rightarrow\) Env G \(\rightarrow\) interpTip t
+lookup : HasType i G t \(\to\) Env G \(\to\) interpTip t
 lookup stop    (x :: xs) = x
 lookup (pop k) (x :: xs) = lookup k xs
 
-interp : Env G \(\rightarrow\) Expr G t \(\rightarrow\) interpTip t
+interp : Env G \(\to\) Expr G t \(\to\) interpTip t
 interp env (Val i)   = i
 interp env (Var i)   = lookup i env
 interp env (Lam b)   = \textbackslash{x} => interp (x :: env) b
 interp env (App f a) = interp env f (interp env a)
 \end{alltt}
-\caption{A simple and incomplete implementation of a well-typed interpreter for the language.}
+\caption{An incomplete implementation of a well-typed interpreter for the language, with less interesting cases omitted.}
 \label{fig:well-typed-interpreter}
 \end{figure}
 
-The result type of the \texttt{interp} function presented in Figure~\ref{fig:well-typed-interpreter} is now much more expressive than the previous definition: it depends on the internal type of the input expression. Now, we know that all \texttt{Expr} terms will be reduced to a term of the corresponding Idris type, according to the semantics of the \texttt{interpTip} function. The interesting observation here is how the handling of variables (through \texttt{Env} and \texttt{lookup}) and Idris's reduction semantics together perform the interpretation of the well-typed terms. Consider the example in Figure~\ref{fig:well-typed-interpreter-example}, in which $\Rightarrow$ should be read as ``reduces to''. As the parameter type of the lambda abstraction and the type of the variable \texttt{Var stop} is the same by construction, the body of the lambda abstraction can be reduced to \texttt{x} through \texttt{lookup}, yielding the identity function as expected. The Idris type system ensures that this reduction will always be consistent with the input expression, as the result depends on the input. Furthermore, we do not need to handle undefined cases, since the type system can predict the resulting type of all reductions (as long as the interpretation function is total).
+The result type of the \texttt{interp} function is now much more expressive than the previous definition: it depends on the internal type of the input expression. Now, we know that all \texttt{Expr} terms will be reduced to a term of the corresponding Idris type, according to the semantics of the \texttt{interpTip} function. To fully appreciate the power of \texttt{interp}, it is important to note that \texttt{interpTip} is evaluated by the type checker. Having the type checker evaluate functions is one of the great benefits of dependently typed programming. In this case, it allows us to create types from terms, determining a suitable return type for each case of \texttt{interp}.
+
+Another interesting observation from Figure~\ref{fig:well-typed-interpreter} is how the handling of variables (through \texttt{Env} and \texttt{lookup}) and Idris's reduction semantics together perform the interpretation of well-typed terms. At first sight, the definition of the \texttt{Env} data type seems unintuitive: How can we get an \texttt{interpTip a}, when \texttt{Env} only stores \texttt{a}? The key here is that pattern matching causes type refinement. The implication of this is that when the type checker sees a pattern matching on \texttt{Env} (as in the \texttt{Lam} case), it can not only infer the concrete type of \texttt{a}, but also run the \texttt{interpTip} function on that \texttt{a}, such that the proper \texttt{Type} and be returned. This mechanism can also be utilized using GADTs in Haskell. However, in this case we would only be able to refine \texttt{a} to a concrete type. The dependently typed setting allows us to run functions on this concrete type as well, adding an extra level of expressiveness.
+
+In order to better understand lookup (and the \texttt{interp} function in general), consider the example in Figure~\ref{fig:well-typed-interpreter-example}. Here, $\Rightarrow$ should be read as ``reduces to''. As the parameter type of the lambda abstraction and the type of the variable \texttt{Var stop} is the same by construction, the body of the lambda abstraction can be reduced to \texttt{x} through \texttt{lookup}, yielding the identity function as expected. The Idris type system ensures that this reduction will always be consistent with the input expression, as the result depends on the input through the return type of \texttt{interp}, \texttt{interpTip t}. Furthermore, we do not need to handle undefined cases, since the type system can predict the resulting type of all reductions (as long as the interpretation function is total).
 
 \begin{figure}
 \begin{alltt}
