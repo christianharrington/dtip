@@ -30,9 +30,9 @@ stackReq (Dec m) n = S (m+n)
 \label{fig:stack_effect_functions}
 \end{figure}
 
-We could use these functions to create a \texttt{CALL} instruction with a stack effect based on an \texttt{Eff}. This \texttt{CALL} instruction could be used to implement function calls, and thereby fixed points from our expression language. To do this we would need an additional layer of abstraction to our current program representation. This could be a vector containing multiple instances of our current program representation, where each element in the vector can be thought of as a function. For this to work we need to encode more information into the \texttt{CALL} instruction. Firstly, we need a program environment which contains the programs this instruction can \emph{call}. Secondly, we need an index into this environment to specify what function to call.
+We could use these functions to create a \texttt{CALL} instruction with a stack effect based on an \texttt{Eff}. This \texttt{CALL} instruction could be used to implement function calls, and thereby fixed points from our well-typed representation. To do this we would need an additional layer of abstraction to our current program representation. This could be a vector containing multiple instances of our current program representation, where each element in the vector can be thought of as a function. For this to work we need to encode more information into the \texttt{CALL} instruction. Firstly, we need a program environment which contains the programs this instruction can \emph{call}. Secondly, we need an index into this environment to specify what function to call.
 
-In Section~\ref{sec:a-well-typed-expression-language} we describe how variables are represented in our well-typed representation by using a predicate, modeling de Bruijn indices. We can use the same approach for function calls, by having our \texttt{CALL} instruction parameterized by a membership predicate on its enclosing environment. This can be used as a intrinsic proof that a program at a given position in the environment has a given specific stack effect. 
+In Section~\ref{sec:a-well-typed-expression-language} we describe how variables are represented in our well-typed representation by using a predicate. We can use the same approach for function calls, by having our \texttt{CALL} instruction parameterized by a membership predicate on its enclosing environment. This can be used as a intrinsic proof that a program at a given position in the environment has a specific stack effect. 
 
 \begin{figure}
 \begin{alltt}
@@ -49,7 +49,7 @@ data Inst : Nat \(\to\) Nat \(\to\) Type where
 \label{fig:call}
 \end{figure}
 
-Figure~\ref{fig:call} shows this membership predicate (\texttt{HasEffect}) and an instruction used for function calls. For constructing a \texttt{CALL} instruction we need an \texttt{Eff} and our membership predicate. For the sake of simplicity we will henceforth use a numerical representation for the index (i.e. \texttt{stop} is \texttt{0}, \texttt{pop stop} is \texttt{1} etc.).
+Figure~\ref{fig:call} shows this membership predicate (\texttt{HasEffect}) and an instruction used for function calls. For constructing a \texttt{CALL} instruction we need an \texttt{Eff} and our membership predicate. For the sake of simplicity we will henceforth use a numerical representation for the index (i.e. \texttt{stop} is \texttt{0}, \texttt{pop stop} is \texttt{1} etc.). The intuition behind \texttt{HasEffect} is analogous to the one behind \texttt{HasType} in the well-typed representation.
 
 \begin{figure}
 \begin{alltt}
@@ -75,4 +75,4 @@ Note that since we can only call programs further down the program vector, mutua
 
 Interestingly, the above way of handling function calls also be used for product and sum types. For example, treating each part of a product type as a function, and \texttt{Fst} and \texttt{Snd} as function calls would be one way to implement this.
 
-It is worth noting that this has not been fully implemented due to time constraints. The shown implementations of \texttt{stackReq}, \texttt{stackProduce}, \texttt{HasEffect}, and \texttt{CALL} are all accepted by the Idris type checker, but there might be complications when implementing the rest of this requiring alterations to these definitions. Furthermore, fully implementing these changes would involve revamping many parts of our stack machine implementation to handle a vector of programs rather than just a program.
+It is worth noting that this has not been fully implemented due to time constraints. The shown implementations of \texttt{stackReq}, \texttt{stackProduce}, \texttt{HasEffect}, and \texttt{CALL} are all accepted by the Idris type checker, but there might be complications when completing the implementation requiring alterations to these definitions. Furthermore, fully implementing these changes would involve revamping many parts of our stack machine implementation to handle a vector of programs rather than just a program.
