@@ -20,25 +20,25 @@
 % Dunfield, Joshua and Krishnaswami, Neelakantan R. (2013). “Complete and Easy Bidirectional Typechecking for Higher-Rank Polymorphism”.
 % A tutorial implementation of a dependently typed lambda calculus
 %Wells - undecidability
+Recall from Section~\ref{sec:the-simply-typed-lambda-calculus} that we can think of the raw representation of our language as the output of a hypothetical parser. To leverage the advantages of the well-typed representation, we want to be able to translate terms in the raw representation into terms in the well-typed representation. This means we first have to type check the raw terms, to make sure they are well-typed. Then we have to produce corresponding terms in the well-typed representation. Fortunately, this can be done in one step, as we will show in this section.
 
-Different type systems lend themselves to different approaches to type checking. In order to characterize these, we must first make the distinction between type \emph{checking} and type \emph{inference}. Given a term \texttt{t} and a type $\tau$, type checking is the act of verifying that \texttt{t} has type $\tau$. Type inference, on the other hand, is the operation of finding a type $\tau$ (ideally the most general, or \emph{principal} type) for a term \texttt{t}. Notably, the extent to which type annotations are required has great influence on the choice of algorithm. An example of a fully checkable system is a fully annotated lambda calculus, in which every binding is annotated with a type. On the other extreme we find ML-style type systems with let-polymorphism, where all types can be efficiently inferred using approaches such as Damas and Milner's constraint-based type reconstruction algorithm, Algorithm W\,\cite{Damas:1982}. 
+\subsection{Choosing an Approach}
+Different type systems lend themselves to different approaches to type checking. In order to characterize these, we must first make the distinction between type \emph{checking} and type \emph{inference}. Given a term \texttt{t} and a type $\tau$, type checking is the act of verifying that \texttt{t} has type $\tau$. Type inference, on the other hand, is the operation of finding a type $\tau$ (ideally the most general, or \emph{principal} type) for a term \texttt{t}. Notably, the extent to which type annotations are required has great influence on the choice of algorithm. An example of a completely checkable system is a fully annotated lambda calculus, in which every binding is annotated with a type. On the other extreme we find ML-style type systems with let-polymorphism, where all types can be efficiently inferred using approaches such as Damas and Milner's constraint-based type reconstruction algorithm, Algorithm W\,\cite{Damas:1982}. 
 
-However, there are many cases where neither of these two extremes are desirable. Even in practical type systems which rely heavily on annotations, such as Java's, type inference must be used to derive types for arithmetic expressions. Also, many functional programming languages that have successfully taken advantage of Hindley-Milner \todo{Citation needed} type systems or extensions thereof to make type inference for most terms tractable (e.g. Standard ML) still require some annotations. However, for more expressive systems such as System F \todo{Citation needed}, Wells\,\cite{Wells96typability} has shown that type inference of all terms is undecidable. Hence, sometimes inferring types for every term in a program is impossible, making explicit type annotations necessary. While they may be deemed undesirable by some, proponents of explicit type annotations generally highlight their ability to provide documentation and encode the programmer's intent\,\cite{Dunfield:bidirectional}.
-\paragraph{}
+However, there are many cases where neither of these two extremes are desirable. Even in practical type systems which rely heavily on annotations, such as Java's, type inference must be used to derive types for arithmetic expressions. Also, many functional programming languages that have successfully taken advantage of Hindley-Milner type systems, or extensions thereof, to make type inference for most terms tractable still require some annotations. However, for more expressive systems such as System F\,\cite[p. 341]{Pierce:TypeSystems}, Wells\,\cite{Wells96typability} has shown that type inference of all terms is undecidable. Hence, sometimes inferring types for every term in a program is impossible, making explicit type annotations necessary. While they may be deemed undesirable by some, proponents of explicit type annotations generally highlight their ability to provide documentation and encode the programmer's intent\,\cite{Dunfield:bidirectional}.
 For the remainder of this section, we will use a system called \emph{bidirectional typing} to show how the well-typed representation presented in Section~\ref{sec:a-well-typed-expression-language} can be used as an underlying representation for a much more sparsely annotated surface syntax.
 
 \subsection{Bidirectional Typing}
-Given a type system, it might not be possible to translate its typing rules into an algorithm in the most obvious manner, namely by creating a recursive algorithm on the premises of each rule. This is only possible for \emph{syntax-directed} systems. In a syntax-directed system, every rule has a unique derivation based on the structure of the term. Bidirectional typing is a technique for making typing rules syntax-directed (or increasing the degree to which they are syntax-directed, at least)\,\cite{Christiansen:bidirectional}, which is commonly attributed to Pierce and Turner\,\cite{Pierce:2000}, although they attribute it to folklore. The technique has been shown to be decidable for very expressive type systems (including System F)\,\cite{Dunfield13:bidir}, and has also been used by L\"{o}h, McBride, and Swierstra\,\cite{Loh:2010} for an accessible tutorial implementation of a dependent type system.
+Given a type system, it might not be possible to translate its typing rules into an algorithm in the most obvious manner, namely by creating a recursive algorithm on the premises of each rule. This is only possible for \emph{syntax-directed} systems. In a syntax-directed system, every rule has a unique derivation based on the structure of the term. Bidirectional typing is a technique for making typing rules syntax-directed (or increasing the degree to which they are syntax-directed, at least)\,\cite{Christiansen:bidirectional}, which is commonly attributed to Pierce and Turner\,\cite{Pierce:2000}, although they attribute it to folklore. The technique has been shown to be applicable to very expressive type systems (including System F)\,\cite{Dunfield13:bidir}, and has also been used by L\"{o}h, McBride, and Swierstra\,\cite{Loh:2010} for an accessible tutorial implementation of a dependent type system.
 
-\paragraph{}
-The purpose of using a bidirectional system is to keep the number of annotations to a minimum, while still keeping the system simple. In the following, we use the notation $t : \tau$ to denote that a term $t$ is annotated with type $\tau$. Bidirectional typing rules are created by splitting the standard typing judgment $\Gamma~\vdash~t~:~\tau$ is split in two:
+The purpose of using a bidirectional system is to keep the number of annotations to a minimum, while still keeping the system simple. In the following, we add a new syntactic form $t : \tau$ to the representation. Bidirectional typing rules are created by splitting the standard typing judgment, $\Gamma~\vdash~t~:~\tau$, in two:
 
 \begin{itemize}
-\item A \emph{checking} judgment $\Gamma \vdash t \Leftarrow T$, where $t$ is checked against type $\tau$
-\item An \emph{inference} judgment $\Gamma \vdash t \Rightarrow T$, where the type $\tau$ is inferred for $\tau$
+\item A \emph{checking} judgment $\Gamma \vdash t \Leftarrow \tau$, where $t$ is checked against type $\tau$.
+\item An \emph{inference} judgment $\Gamma \vdash t \Rightarrow \tau$, where the type $\tau$ is inferred for $\tau$.
 \end{itemize}
 
-When using these judgments, we say that we are either in \emph{checking} or \emph{inference} mode, respectively. In checking mode, we regard $\tau$ as input (to the checking function), while inference mode, we regard $\tau$ as output (from the inferene function). Accordingly, we also split our terms into those for which we can infer the type and those which we need to check against a given type. Based on Section~\ref{sec:the-simply-typed-lambda-calculus}, such a representation is shown in Figure~\ref{fig:bidirectional-terms}. This allows us to create an algorithm which sends type information through the abstract syntax tree in two directions, hence making it \emph{bidirectional}: checking propagates type information down into the abstract syntax tree, while inference sends type information upward\,\cite{Pfenning:bidirectional}. Concretely, we can construct two mutually recursive functions, \texttt{check} and \texttt{infer} (presented in Section~\ref{sec:type-checking-the-algorithm}), in which \texttt{check} calls \texttt{infer} when it encounters a term for which we can infer the type, and vice versa. This is implemented by the use of the \texttt{mutual} keyword in Idris, which allows both functions and data types to be defined in terms of each other.
+When using these judgments, we say that we are either in \emph{checking} or \emph{inference} mode, respectively. In checking mode, we regard $\tau$ as input (to the checking function), while in inference mode, we regard $\tau$ as output (from the inference function). Accordingly, we also split our terms into those for which we can infer the type and those which we need to check against a given type. Based on the raw representation from Section~\ref{sec:the-simply-typed-lambda-calculus}, a modified raw representation is shown in Figure~\ref{fig:bidirectional-terms}. This allows us to create an algorithm which sends type information through the abstract syntax tree in two directions, hence making it \emph{bidirectional}: checking propagates type information down into the abstract syntax tree, while inference sends type information upward\,\cite{Pfenning:bidirectional}. Concretely, we can construct two mutually recursive functions, \texttt{check} and \texttt{infer} (presented in Section~\ref{sec:type-checking-the-algorithm}), in which \texttt{check} calls \texttt{infer} when it encounters a term for which we can infer the type, and vice versa. This is implemented by the use of the \texttt{mutual} keyword in Idris, which allows both functions and data types to be defined in terms of each other.
 
 \begin{figure}
 \begin{alltt}
@@ -65,21 +65,20 @@ mutual
    lOpU  : UnOp -> InfTerm
    lOpB  : BinOp -> InfTerm
 \end{alltt}
-\caption{The raw representation split into checking and inference terms, respectively. Again, \texttt{UnOp} and \texttt{BinOp} have been omitted for brevity. We have chosen to prefix all terms with an '\texttt{l}' in order to keep a close correspondence with the well-typed representation from Section~\ref{sec:a-well-typed-expression-language}, while still emphasizing that they are different.}
+\caption{The raw representation split into checking and inference terms, respectively. Again, \texttt{UnOp} and \texttt{BinOp} have been omitted for brevity. We have chosen to prefix all terms with an `\texttt{l}' in order to keep a close correspondence with the well-typed representation from Section~\ref{sec:a-well-typed-expression-language}, while still emphasizing that they are different.}
 \label{fig:bidirectional-terms}
 \end{figure}
 
 % \paragraph{Modes}
 % Whenever we check a term against a type, we say that we are in \emph{checking mode}. In checking mode, we always have a concrete term \texttt{t} and a concrete type $\tau$, and must determine whether \texttt{t} indeed has type $\tau$. That is, we can regard $\tau$ as input (to the checking function). On the other hand, when we are able to find a type $\tau$ for a term, we are in \emph{inference mode}. In this case, we can regard $\tau$ as output (from the inference function). 
-\paragraph{}
-We can switch between checking and inference mode by using the two rules presented in Figure~\ref{fig:bidirectional-modes}. Naturally, if we can successfully infer a type $\tau$ for \texttt{t}, then we can also sucessfully check that \texttt{t} has type $\tau$. Therefore, by a bottom-up reading of the \textsc{CheckInfer} rule, we can switch from checking mode to inference mode. We can go from inference mode to checking mode whenever we encounter an explicit type annotation, as we are always able to check a term against an explicitly given type. This relationship is expressed by the \textsc{Anno} rule.
+We can switch between checking and inference mode by using the two rules presented in Figure~\ref{fig:bidirectional-modes}. Naturally, if we can successfully infer a type $\tau$ for \texttt{t}, then we can also sucessfully check that \texttt{t} has type $\tau$. Therefore, by a bottom-up reading of the \textsc{T-CheckInfer} rule, we can switch from checking mode to inference mode. We can go from inference mode to checking mode whenever we encounter an explicit type annotation, as we are always able to check a term against an explicitly given type. This relationship is expressed by the \textsc{T-Anno} rule.
 
 \newsavebox{\ptCheckInfer}
 \begin{lrbox}{\ptCheckInfer}
 \begin{varwidth}{\linewidth}
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash t \Rightarrow \tau$}
-\RightLabel{\sc{(CheckInfer)}}
+\RightLabel{\sc{(T-CheckInfer)}}
 \UnaryInfC{$\Gamma \vdash t \Leftarrow \tau$}
 \end{prooftree}
 \end{varwidth}
@@ -90,7 +89,7 @@ We can switch between checking and inference mode by using the two rules present
 \begin{varwidth}{\linewidth}
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash t \Leftarrow \tau$}
-\RightLabel{\sc{(Anno)}}
+\RightLabel{\sc{(T-Anno)}}
 \UnaryInfC{$\Gamma \vdash t : \tau \Rightarrow \tau$}
 \end{prooftree}
 \end{varwidth}
@@ -110,14 +109,14 @@ We can switch between checking and inference mode by using the two rules present
 \subsection{Understanding the Typing Rules}
 To understand the rules given in Figure~\ref{fig:bidirectional-typing-rules}, we must keep in mind that they have been constructed bottom-up: The information available in the conclusion of each rule determines the mode of the premises. For each rule, the important question is: Can we, from the information given in the conclusion, which includes the context $\Gamma$ and the term, determine a unique type for the term? If so, we know that the type can be inferred. If not, we are in checking mode, where the expected type information must have originated from either an enclosing term (e.g. an explicit type annotation) or the structure of the term (e.g. the condition in a conditional expression must have type \textsc{Bool}). Thus, this information is propagated down into the abstract syntax tree.
 
-Consider the \textsc{Var} rule from Figure~\ref{fig:bidirectional-typing-rules}.
+Consider the \textsc{T-Var} rule from Figure~\ref{fig:bidirectional-typing-rules}.
 
 \newsavebox{\ptone}
 \begin{lrbox}{\ptone}
 \begin{varwidth}{\linewidth}
 \begin{prooftree}
 \AxiomC{}
-\RightLabel{\sc{(Var)}}
+\RightLabel{\sc{(T-Var)}}
 \UnaryInfC{$\Gamma_{1}, x : \tau, \Gamma_{2} \vdash x \Rightarrow \tau$}
 \end{prooftree}
 \end{varwidth}
@@ -128,7 +127,7 @@ Consider the \textsc{Var} rule from Figure~\ref{fig:bidirectional-typing-rules}.
 \begin{varwidth}{\linewidth}
 \begin{prooftree}
 \AxiomC{$\Gamma, x : \sigma \vdash e \Leftarrow \tau $}
-\RightLabel{\sc{(Abs)}}
+\RightLabel{\sc{(T-Abs)}}
 \UnaryInfC{$\Gamma \vdash \lambda x.e \Leftarrow \sigma \to \tau$}
 \end{prooftree}
 \end{varwidth}
@@ -140,7 +139,7 @@ Consider the \textsc{Var} rule from Figure~\ref{fig:bidirectional-typing-rules}.
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash f \Rightarrow \sigma \to \tau$}
 \AxiomC{$\Gamma \vdash x \Leftarrow \sigma$}
-\RightLabel{\sc{(App)}}
+\RightLabel{\sc{(T-App)}}
 \BinaryInfC{$\Gamma \vdash f x \Rightarrow \tau$}
 \end{prooftree}
 \end{varwidth}
@@ -151,7 +150,7 @@ Consider the \textsc{Var} rule from Figure~\ref{fig:bidirectional-typing-rules}.
 \usebox{\ptone}
 \end{center}
 \end{figure}
-For a given variable \textit{x}, we can always infer a unique type, provided that \textit{x} is in the context, so inference mode is used. A more interesting case is the lambda abstraction (\textsc{Abs}), for which we cannot infer a unique type, since the type of the argument could be anything.
+For a given variable \textit{x}, we can always infer a unique type, provided that \textit{x} is in the context, so inference mode is used. A more interesting case is the lambda abstraction (\textsc{T-Abs}), for which we cannot infer a unique type, since the type of the argument could be anything.
 \begin{figure}
 \begin{center}
 \usebox{\pttwo}
@@ -163,22 +162,17 @@ This means that lambda abstractions must be typed in checking mode, propagating 
 \usebox{\ptthree}
 \end{center}
 \end{figure}
-In the case of the application rule (\textsc{App}), the important thing to understand is that the type of the function \textit{f} must already be known before we can apply the argument. That is, we must be able to determine the type of the function from an enclosing term, and then use this information to check the type of the argument in checking mode. And when we know that we can infer a unique type for the function, we can also infer a unique type for the application of an argument on that function.
-
-The rest of the rules presented in Figure~\ref{fig:bidirectional-typing-rules} follow the same basic principles, and we will forgo describing them all in detail here. 
+In the case of the application rule (\textsc{T-App}), the important thing to understand is that the type of the function \textit{f} must already be known before we can apply the argument. That is, we must be able to infer the type of the function from an enclosing term, and then use this information to check the type of the argument in checking mode. When we know that we can infer a unique type for the function, we can also infer a unique type for the application of an argument on that function. The rest of the rules presented in Figure~\ref{fig:bidirectional-typing-rules} follow the same basic principles, and we will forgo describing them all in detail here. 
 
 % Does it have a unique type? Y: Infer N: Check
-
-\todo{Is Fix rule correct?}
-\todo{Check that typing rules look right}
 
 \newsavebox{\ptPairElimOne}
 \begin{lrbox}{\ptPairElimOne}
 \begin{varwidth}{\linewidth}
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash p \Rightarrow \tau_{1} + \tau_{2}$}
-\RightLabel{\sc{(PairElim1)}}
-\UnaryInfC{$\Gamma \vdash$ \texttt{fst} $p \Rightarrow \tau_{1}$}
+\RightLabel{\sc{(T-PairElim1)}}
+\UnaryInfC{$\Gamma \vdash$ \texttt{Fst} $p \Rightarrow \tau_{1}$}
 \end{prooftree}
 \end{varwidth}
 \end{lrbox}
@@ -188,8 +182,8 @@ The rest of the rules presented in Figure~\ref{fig:bidirectional-typing-rules} f
 \begin{varwidth}{\linewidth}
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash p \Rightarrow \tau_{1} + \tau_{2}$}
-\RightLabel{\sc{(PairElim2)}}
-\UnaryInfC{$\Gamma \vdash$ \texttt{snd} $p \Rightarrow \tau_{2}$}
+\RightLabel{\sc{(T-PairElim2)}}
+\UnaryInfC{$\Gamma \vdash$ \texttt{Snd} $p \Rightarrow \tau_{2}$}
 \end{prooftree}
 \end{varwidth}
 \end{lrbox}
@@ -199,7 +193,7 @@ The rest of the rules presented in Figure~\ref{fig:bidirectional-typing-rules} f
 \begin{varwidth}{\linewidth}
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash e \Leftarrow \tau_{1}$}
-\RightLabel{\sc{(SumIntro1)}}
+\RightLabel{\sc{(T-SumIntro1)}}
 \UnaryInfC{$\Gamma \vdash$ \texttt{InL} $e \Leftarrow \tau_{1} + \tau_{2}$}
 \end{prooftree}
 \end{varwidth}
@@ -210,7 +204,7 @@ The rest of the rules presented in Figure~\ref{fig:bidirectional-typing-rules} f
 \begin{varwidth}{\linewidth}
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash e \Leftarrow \tau_{2}$}
-\RightLabel{\sc{(SumIntro2)}}
+\RightLabel{\sc{(T-SumIntro2)}}
 \UnaryInfC{$\Gamma \vdash$ \texttt{InR} $e \Leftarrow \tau_{1} + \tau_{2}$}
 \end{prooftree}
 \end{varwidth}
@@ -219,28 +213,34 @@ The rest of the rules presented in Figure~\ref{fig:bidirectional-typing-rules} f
 \begin{center}
 \begin{figure}
 
-\begin{tabu}{c c c}
-\usebox{\ptone} & \usebox{\pttwo} & \usebox{\ptthree}
+\begin{center}
+\usebox{\ptone}
+\end{center}
+
+\paragraph{} % HAX
+
+\begin{tabu}{c c}
+\usebox{\pttwo} & \usebox{\ptthree}
 \end{tabu}
 
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash e \Leftarrow $ \texttt{Bool}}
 \AxiomC{$\Gamma \vdash e_{1} \Leftarrow \tau$}
 \AxiomC{$\Gamma \vdash e_{2} \Leftarrow \tau$}
-\RightLabel{\sc{(If)}}
-\TrinaryInfC{$\Gamma \vdash$ \texttt{IF} $e$ \texttt{THEN} $e_{1}$ \texttt{ELSE} $e_{2} \Leftarrow \tau$}
+\RightLabel{\sc{(T-If)}}
+\TrinaryInfC{$\Gamma \vdash$ \texttt{If} $e$ \texttt{Then} $e_{1}$ \texttt{Else} $e_{2} \Leftarrow \tau$}
 \end{prooftree}
 
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash e_{1} \Leftarrow \tau_{1}$}
 \AxiomC{$\Gamma \vdash e_{2} \Leftarrow \tau_{2}$}
-\RightLabel{\sc{(PairIntro)}}
+\RightLabel{\sc{(T-PairIntro)}}
 \BinaryInfC{$\Gamma \vdash (e_{1}, e_{2}) \Leftarrow \tau_{1} \times \tau_{2}$}
 \end{prooftree}
 
 \begin{tabu}{c c}
 \usebox{\ptPairElimOne} & \usebox{\ptPairElimTwo}
-\\
+\\ \\
 \usebox{\ptSumIntroOne} & \usebox{\ptSumIntroTwo}
 \end{tabu}
 
@@ -249,24 +249,25 @@ The rest of the rules presented in Figure~\ref{fig:bidirectional-typing-rules} f
 \AxiomC{$\Gamma \vdash e_{1} \Rightarrow \tau_{1} + \tau_{2}$}
 \AxiomC{$\Gamma, x : \tau_{1} \vdash e_{2} \Leftarrow \tau$}
 \AxiomC{$\Gamma, y : \tau_{2} \vdash e_{3} \Leftarrow \tau$}
-\RightLabel{\sc{(SumElim)}}
-\TrinaryInfC{$\Gamma \vdash$ \texttt{Case} $e_{1}$ \texttt{InL} $x \Rightarrow e_{2} | $ \texttt{InR} $y \Rightarrow e_{3} \Leftarrow \tau$}
+\RightLabel{\sc{(T-SumElim)}}
+\TrinaryInfC{$\Gamma \vdash$ \texttt{Case} $e_{1}$ \texttt{InL} $x \Rightarrow e_{2}$ | \texttt{InR} $y \Rightarrow e_{3} \Leftarrow \tau$}
 \end{prooftree}
 
 \begin{prooftree}
 \AxiomC{$\Gamma \vdash f \Rightarrow \tau \to \tau$}
-\RightLabel{\sc{(Fix)}}
+\RightLabel{\sc{(T-Fix)}}
 \UnaryInfC{$\Gamma \vdash$ \texttt{Fix} $f \Rightarrow \tau$}
 \end{prooftree}
 
-\caption{The bidirectional typing rules for our system.}
+\caption{The most interesting bidirectional typing rules for our system. The rules for binary and unary operators have been omitted, as they are similar to the \textsc{T-App} rule. Also, the introduction rules for base types are not shown.}
 \label{fig:bidirectional-typing-rules}
 \end{figure}
 \end{center}
 
 
 \subsection{The Algorithm}
-The essential parts of the mutually recursive functions \texttt{check} and \texttt{infer}, together forming the bidirectional typing algorithm, are presented in Figure~\ref{fig:bidirectional-algorithm}. When considered in connection with the typing rules from the previous section, most of the cases are a straightforward translation of a rule.
+The essential parts of the mutually recursive functions \texttt{check} and \texttt{infer}, together forming the bidirectional typing algorithm, are presented in Figure~\ref{fig:bidirectional-algorithm}. When considered in connection with the typing rules from the previous section, most of the cases are a straightforward translation of a bidirectional typing rule.
+\todo{Check that algorithm figure corresponds with code.}
 \label{sec:type-checking-the-algorithm}
 \begin{figure}
 \begin{alltt}
@@ -297,18 +298,20 @@ mutual
 \label{fig:bidirectional-algorithm}
 \end{figure}
 
-The only interesting cases are \texttt{lInf} and \texttt{lVar}. \texttt{lInf} is the case for the \textsc{CheckInfer} rule, which takes the algorithm from checking to inference mode. First, a type \texttt{t'} for the term in question (\texttt{iterm}) is inferred, and then a call to the function \texttt{exprTipEqSwap} creates an expression of type \texttt{Expr G t} (\texttt{expr}) from an expression of type \texttt{Expr G t'} (\texttt{e}), if \texttt{t} and \texttt{t'} are equal.
+The only interesting cases are \texttt{lInf} and \texttt{lVar}. \texttt{lInf} is the case for the \textsc{T-CheckInfer} rule, which takes the algorithm from checking to inference mode. First, a type \texttt{t'} for the term in question (\texttt{iterm}) is inferred, and then a call to the function \texttt{exprTipEqSwap} creates an expression of type \texttt{Expr G t} (\texttt{expr}) from an expression of type \texttt{Expr G t'} (\texttt{e}), if \texttt{t} and \texttt{t'} are equal.
 
-The \texttt{lVar} case has to construct a \texttt{HasType} predicate from a de Bruijn index implemented as a natural number. This happens by first creating a \texttt{Fin} value with the same bound as the enclosing environment \texttt{G}, by a call to \texttt{natToFinFromVect}. Note that this may fail, since the input index could be any natural number. Next, \texttt{makeHasType} constructs the appropriate \texttt{HasType} predicate recursively by examining the previously generated \texttt{Fin} value. Because the algorithm simply returns a variable with the type at the given location in the environment, this may not be same type as the type expected by the user, if the raw input lambda term has not been correctly constructed.
-
-In the implementation of \texttt{infer} in Figure~\ref{fig:bidirectional-algorithm}, it may not be obvious that we can simply replace all the returned types with underscores (\_). Due to the fact that the type of the expression returned on the right-hand side of any of the dependent pair is never ambiguous, the type checker is able to infer it, and thus we do not have to give it explicitly. 
+The \texttt{lVar} case has to construct a \texttt{HasType} predicate from a de Bruijn index implemented as a natural number. This is done by first creating a \texttt{Fin} value with the same bound as the enclosing environment \texttt{G}, by a call to \texttt{natToFinFromVect}. Note that this may fail, since the input index could be any natural number. Next, \texttt{makeHasType} constructs the appropriate \texttt{HasType} predicate recursively by examining the previously generated \texttt{Fin} value. Because the algorithm simply returns a variable with the type at the given location in the environment, this may not be same type as the type expected by the user, if the raw input lambda term has not been correctly constructed. Recall from Section~\ref{sec:dependent-types-idris} that the Idris type checker can infer the first element of a dependent pair by unification when it is not ambiguous.
 
 \subsection{Discussion}
-It should be apparent from this section that bidirectional typing certainly has its merits. However, this system is not the holy grail of type checking. One of the obvious downsides is that we have to split the definition into two complimenting halves, which does not necessarily lead to the most intuitive representation. Also, it means that the abstract syntax tree is ``polluted'' with type checking mechanics such as the \texttt{lInf} constructor. Aside from intuitive issues, a more serious problem with this representation is that we cannot substitutite any variable for an arbitrary term of the same type\,\cite{Weirich:bidirectional}. Since variables must be typed in inference mode, we cannot substitute a variable with any term which must be checked in checking mode. In practice, these issues can be remedied by defining a bijection between fully annotated terms and bidirectional terms, such that we can perform substitution in a more suitable representation, but recover the bidirectional representation when needed.
+It should be apparent from this section that bidirectional typing has its merits. However, this system is not the holy grail of type checking. One of the obvious downsides is that we have to split the definition into two complimentary halves, which does not necessarily lead to the most intuitive representation. Also, it means that the abstract syntax tree is ``polluted'' with type checking mechanics such as the \texttt{lInf} constructor. Aside from intuitive issues, a more serious problem with this representation is that we cannot substitute any variable for an arbitrary term of the same type\,\cite{Weirich:bidirectional}. Since variables must be typed in inference mode, we cannot substitute a variable with any term which must be checked in checking mode. In practice, these issues can be remedied by defining a bijection between untyped terms and bidirectional terms, such that we can perform substitution in a more suitable representation, but recover the bidirectional representation when needed.
 
-In spite of the above shortcomings, we find the system to be convenient for our purposes. Because we only use the bidirectional representation as a surface syntax (ideally generated by a parser), we do not need to perform any substitutions on it. The use of this representation allows us to showcase that it is feasible to generate a well-typed and fully annotated abstract syntax tree from a more user friendly surface language with few annotations. In a bidirectional system, type annotations are only ever necessary for reducible expressions\,\cite{Dunfield13:bidir}, which in practice leads to much fewer annotations than if we had to generate the well-typed representation directly.
+In spite of the above shortcomings, we find the system to be convenient for our purposes. Because we only use the bidirectional representation as a surface syntax (ideally generated by a parser), we do not need to perform any substitutions on it. The use of this representation allows us to showcase that it is feasible to generate a well-typed and fully annotated abstract syntax tree from a more user friendly surface language with few annotations. In a bidirectional system, type annotations are only ever necessary for reducible expressions\,\cite{Dunfield13:bidir}, which in practice leads to far fewer annotations than if we had to generate the well-typed representation directly.
 
-The algorithm described in this section ensures that a well-typed term is produced, but it does not prove that the output term actually corresponds to the input term. This property could be extrinsically proven using a bijection between well-typed terms and the ones described in Figure~\ref{fig:bidirectional-terms}. At the same time, we have no guarantee that the type checking algorithm does not reject well-formed input terms. Again, we could construct a predicate describing the property of being well-formed and then give an extrinsic proof that the type checker does not reject any well-formed term. Due to lack of time, these have not been provided.
+The algorithm described in this section ensures that a well-typed term is produced, but it does not prove that the output term corresponds to the input term. This property could be extrinsically proven using (1) a mapping from well-typed terms to bidirectional terms which in effect ``forgets'' the type information added by the type checker, and (2) a proof that the input to the type checker is equivalent to the result of applying this mapping to the output.
+
+At the same time, we have no guarantee that the type checking algorithm does not reject well-formed input terms. Again, we could construct a predicate describing the property of being well-formed and then give an extrinsic proof that the type checker does not reject any well-formed term. Due to lack of time, these have not been implemented.\\
+
+With our type checker we have a way of translating terms in our raw representation from Section~\ref{sec:stlc} to terms in our the well-typed representation from Section~\ref{sec:a-well-typed-expression-language}. In the next section, we will explore how we can compile and run these well-typed terms.
 
 % annotations only needed at top level
 % Perhaps the most serious drawback is that variable substitution no longer works for typing derivations.
