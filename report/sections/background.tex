@@ -1,31 +1,32 @@
 %!TEX root = ../main.tex
 \section{Background}
 \label{sec:background}
+In this section, we will give a brief introduction to the simply typed lambda calculus, followed by a quick introduction to programming with dependent types.
 
 \subsection{Simply Typed Lambda Calculus}
 \label{sec:stlc}
-The simply typed lambda calculus is a formal system based on the untyped lambda calculus, extending it, as the name implies, with a simple type system. The language itself consists of three terms: \emph{variable}, \emph{abstraction} and \emph{application}, with three simple typing rules (see Figure~\ref{fig:simple-typing-rules}), along with three simple evaluation rules (see Figure~\ref{fig:simple-evaluation-rules})\,\cite[pp. 99]{Pierce:TypeSystems}.
+The simply typed lambda calculus is a formal system based on the untyped lambda calculus, extending it, as the name implies, with a simple type system. The language itself consists of three kinds of terms: \emph{variables}, \emph{abstractions}, and \emph{applications}, with three simple typing rules (see Figure~\ref{fig:simple-typing-rules}), along with three simple evaluation rules (see Figure~\ref{fig:simple-evaluation-rules})\,\cite[pp. 99]{Pierce:TypeSystems}.
 
 \begin{center}
 \begin{figure}
 
 \begin{prooftree}
-\AxiomC{x : T $\in \Gamma$}
+\AxiomC{$x$ : $\tau \in \Gamma$}
 \RightLabel{\sc{(T-Var)}}
-\UnaryInfC{$\Gamma \vdash$ x : T}
+\UnaryInfC{$\Gamma \vdash$ $x$ : $\tau$}
 \end{prooftree}
 
 \begin{prooftree}
-\AxiomC{$\Gamma$, x : T$_{1} \vdash$ t$_{2}$ : T$_{2}$}
+\AxiomC{$\Gamma$, $x$ : $\tau_{1} \vdash$ $t$ : $\tau_{2}$}
 \RightLabel{\sc{(T-Abs)}}
-\UnaryInfC{$\Gamma \vdash \lambda$x : T$_{1}$ . t$_{2}$ : T$_{1} \to$ T$_{2}$}
+\UnaryInfC{$\Gamma \vdash \lambda x:\tau_{1}.t:\tau_{1} \to$ $\tau_{2}$}
 \end{prooftree}
 
 \begin{prooftree}
-\AxiomC{$\Gamma \vdash$ t$_{1}$ : T$_{11} \to $ T$_{_12}$}
-\AxiomC{$\Gamma \vdash$ t : T$_{11}$}
+\AxiomC{$\Gamma \vdash$ $t_{1}$ : $\tau_{1} \to $ $\tau_{2}$}
+\AxiomC{$\Gamma \vdash$ $t$ : $\tau_{2}$}
 \RightLabel{\sc{(T-App)}}
-\BinaryInfC{$\Gamma \vdash$ t$_{1}$ t$_{2}$ : T$_{12}$}
+\BinaryInfC{$\Gamma \vdash$ $t_{1}$ $t_{2}$ : $\tau_{2}$}
 \end{prooftree}
 
 \caption{Typing rules for the simply typed lambda calculus.}
@@ -38,19 +39,19 @@ The simply typed lambda calculus is a formal system based on the untyped lambda 
 \begin{figure}
 
 \begin{prooftree}
-\AxiomC{t$_{1} \longrightarrow$ t$_{1}^{\prime}$}
+\AxiomC{$t_{1} \longrightarrow$ $t_{1}^{\prime}$}
 \RightLabel{\sc{(E-App1)}}
-\UnaryInfC{t$_{1}$ t$_{2}$ $\longrightarrow$ t$_{1}^{\prime}$ t$_{2}$}
+\UnaryInfC{$t_{1}$ $t_{2}$ $\longrightarrow$ $t_{1}^{\prime}$ $t_{2}$}
 \end{prooftree}
 
 \begin{prooftree}
-\AxiomC{t$_{2} \longrightarrow$ t$_{2}^{\prime}$}
+\AxiomC{$t_{2} \longrightarrow$ $t_{2}^{\prime}$}
 \RightLabel{\sc{(E-App2)}}
-\UnaryInfC{v$_{1}$ t$_{2}$ $\longrightarrow$ v$_{1}$ t$_{2}^{\prime}$}
+\UnaryInfC{$v_{1}$ $t_{2}$ $\longrightarrow$ $v_{1}$ $t_{2}^{\prime}$}
 \end{prooftree}
 
 \begin{center}
-($\lambda$x : T$_{11}$.t$_{12}$) v$_{2} \longrightarrow$ [x $\mapsto$ v$_{2}$]t$_{12}$ \sc{(E-AppAbs)}
+($\lambda x$ : $\tau.t$) $v_{2} \longrightarrow$ [$x\mapsto v_{2}$]$t$ \sc{(E-AppAbs)}
 \end{center}
 
 \caption{Evaluation rules for the call-by-value simply typed lambda calculus.}
@@ -59,16 +60,16 @@ The simply typed lambda calculus is a formal system based on the untyped lambda 
 \end{figure}
 \end{center}
 
-The simply typed lambda calculus has the property of \emph{strong normalization}\,\cite[pp. 149]{Pierce:TypeSystems}: After finite number of reductions, we will arrive at a normal form. A term is in normal form if no evaluation rules apply to it. This means that when evaluating a term, the evaluation will always terminate, and the resulting term will be a value. As a consequence of this, the simply typed lambda calculus is not Turing-complete.
+\todo{Move explanation of figure 1 from sec 4 to here}
+The simply typed lambda calculus has the property of \emph{strong normalization}\,\cite[pp. 149]{Pierce:TypeSystems}: After a finite number of reductions, we will arrive at a normal form. A term is in normal form if no evaluation rules apply to it. This can be seen in the terms $v_{1}$ and $v_{2}$ in Figure~\ref{fig:simple-evaluation-rules}. They are values, meaning no evaluation rules apply to them. Strong normalization means that when evaluating a term, the evaluation will always terminate, and the resulting term will be a value. A consequence of this is that the simply typed lambda calculus is not Turing-complete.
 
-This system will be the foundation of the language presented in the next sections. We will also add several extensions to the calculus, such as the sum and product types.
+This system will be the foundation of the language presented in the next sections. We will also add several extensions to the calculus, such as sum and product types.
 
 \subsection{Dependent Types}
 \label{sec:dependent-types-idris}
-\todo{We should explain dependent pairs in this section.}
 % - "Correct by construction"
 % - Extrinsic vs intrinsic verification
-Before we get started with dependent types, let us define a data type for representing natural numbers. This will serve as an introduction to the Idris syntax for data declarations. In Figure\,\ref{fig:nat} two constructors for the \texttt{Nat} data type can be seen: \texttt{Z} and \texttt{S n}, where \texttt{n} is a \texttt{Nat}. \texttt{Z} represents zero, while \texttt{S n} represents the successor to \texttt{n}. So \texttt{(S (S Z))} represents the natural number 2. The declaration for \texttt{Nat} looks a lot like how you would define a generalized algebraic data type (GADT) in Haskell, where $\ast$ has been replaced with \texttt{Type}. In the next example, however, we will see how dependent types are more expressive.
+Before we get started with dependent types, let us define a data type for representing natural number, which will serve as an introduction to the Idris syntax for data declarations. In Figure~\ref{fig:nat}, two constructors for the \texttt{Nat} data type can be seen: \texttt{Z} and \texttt{S n}, where \texttt{n} is a \texttt{Nat}. \texttt{Z} represents zero, while \texttt{S n} represents the successor to \texttt{n}. So \texttt{(S (S Z))} represents the natural number 2. The declaration for \texttt{Nat} looks a lot like how one would define a generalized algebraic data type (GADT) in Haskell, where \texttt{*} has been replaced with \texttt{Type}. In the next example, however, we will see how dependent types are more expressive.
 
 \begin{figure}
 \begin{alltt}
@@ -80,7 +81,9 @@ data Nat : Type where
 \label{fig:nat}
 \end{figure}
 
-In many modern programming languages, types can depend on other types. This is often seen in generic collection types such as \texttt{List:~Type\(\to\) Type}, which is parameterized by the type contained in the list. But in programming languages with dependent types, types can also depend on terms. The classic example is the dependent vector, \texttt{Vect:~Nat~\(\to\) Type~\(\to\) Type}. It can be seen in Figure~\ref{fig:vect}. A \texttt{Vect} takes two arguments: a natural number \texttt{n} and a type \texttt{a}. Here, the natural number \texttt{n} specifies the length of the vector, and \texttt{a} the type of its elements. As we can see from the constructors, the empty vector always has length \texttt{Z}, while the \texttt{(::)} constructor always returns a vector one element longer than the vector is constructed from. Since the type \texttt{a} is the same for both constructors, we say a vector is \emph{parameterized} by the type. The natural number \texttt{n}, however, is different for each constructor, so the vector is a family of data types \emph{indexed} by the natural numbers.
+In many modern programming languages, types can depend on other types. This is often seen in generic collection types such as \texttt{List:~Type~\(\to\) Type}, which is parameterized by the type contained in the list. But in programming languages with dependent types, types can also depend on terms. Dependent types have been implemented in several languages, such as Coq\,\cite{Coq}, Agda\,\cite{Agda}, and, of course, Idris. 
+
+The classic example is the dependent vector, \texttt{Vect:~Nat~\(\to\) Type~\(\to\) Type}, which can be seen in Figure~\ref{fig:vect}. A \texttt{Vect} takes two arguments: a natural number \texttt{n} and a type \texttt{a}. Here, the natural number \texttt{n} specifies the length of the vector, and \texttt{a} the type of its elements. As we can see from the constructors, the empty vector always has length \texttt{Z}, while the \texttt{(::)} constructor always returns a vector one element longer than the vector is constructed from. Since the type \texttt{a} is the same for both constructors, we say a vector is \emph{parameterized} by the type. The natural number \texttt{n}, however, is potentially different for each constructor, so the vector is a family of data types \emph{indexed} by the natural numbers.
 
 \begin{figure}
 \begin{alltt}
@@ -92,7 +95,7 @@ data Vect : Nat \(\to\) Type \(\to\) Type where
 \label{fig:vect}
 \end{figure}
 
-To see how dependent types can be useful, let us look at the \texttt{zip} function for lists and vectors. The \texttt{zip} function for lists has the type \texttt{List~A~$\to$ List~B~$\to$ List~(A,~B)}. The \texttt{zip} function takes two lists of elements, and returns a list of pairs of elements from each list. But what happens if one list is longer than the other? Does the \texttt{zip} function simply stop zipping when it reaches the end of one of the lists? Or does it fill the remaining pairs with some default value? We have no way of knowing without reading the documentation or looking through the source.
+To see how dependent types can be useful, let us look at the \texttt{zip} function for lists and vectors. The \texttt{zip} function for lists has the type \texttt{List~A~$\to$ List~B~$\to$ List~(A,~B)}. It takes two lists of elements, and returns a list of pairs of elements from each list. But what happens if one list is longer than the other? Does the \texttt{zip} function simply stop zipping when it reaches the end of one of the lists? Or does it fill the remaining pairs with some default value? We have no way of knowing without reading the documentation or looking through the source.
 
 \begin{figure}
 \begin{alltt}
@@ -104,11 +107,26 @@ zip (x :: xs) (y :: ys) = (x, y) :: zip xs ys
 \label{fig:zip}
 \end{figure}
 
-In Figure~\ref{fig:zip}, a zip function for the dependent vector is defined. It takes two vectors with the length \texttt{n}, and returns a vector with length \texttt{n}. If someone tries to compile a program that tries to zip vectors of different lengths, and therefore different types, the type checker will catch it, and the program will not compile. Notice that we do not need to match on the cases where one vector is empty while the other still has elements, as the vectors are of equal length in every iteration. In fact, the type checker will not even let us match on this case, as it is not well-typed: the \texttt{Nat} parameters \texttt{Z} and \texttt{(S~n)} cannot unify.
+In Figure~\ref{fig:zip}, a function for zipping the dependent vector is defined. It takes two vectors with the length \texttt{n}, and returns a vector with length \texttt{n}. If someone tries to compile a program that tries to zip vectors of different lengths, and therefore different types, the type checker will catch it, and the program will not compile. Notice that we do not need to match on the cases where one vector is empty while the other still has elements, as the vectors are of equal length in every iteration. In fact, the type checker will not even let us match on this case, as it is not well-typed: the \texttt{Nat} parameters \texttt{Z} and \texttt{(S~n)} cannot unify.
 
-When looking at the type of \texttt{zip} in Figure~\ref{fig:zip}, it might not be clear where \texttt{n}, \texttt{a}, and \texttt{b} come from. Why is the type not \texttt{(n:~Nat)~$\to$ (a:~Type)~$\to$ (b:~Type)~$\to$ Vect~n~a~$\to$ Vect~n~b~$\to$ Vect~n~(a,~b)}? This is because Idris can deduce their values from the context; they are \emph{implicit}. It is also possible to explicitly define implicits by surrounding a parameter with curly braces. In this case, it would look like this: \texttt{\{n:~Nat\}~$\to$ \{a:~Type\}~$\to$ \{b:~Type\}~$\to$ Vect~n~a~$\to$ Vect~n~b~$\to$ Vect~n~(a,b)}. If we do not list these parameters outside of where they are used, as in Figure~\ref{fig:zip}, Idris tries make them implicit automatically.
+When looking at the type of \texttt{zip} in Figure~\ref{fig:zip}, it might not be clear where \texttt{n}, \texttt{a}, and \texttt{b} come from. One might wonder why the type is not \texttt{(n:~Nat)~$\to$ (a:~Type)~$\to$ (b:~Type)~$\to$ Vect~n~a~$\to$ Vect~n~b~$\to$ Vect~n~(a,~b)}.\\ This is because Idris can deduce their values from the context; they are \emph{implicit}. It is also possible to explicitly define implicits by surrounding a parameter with curly braces. In this case, it would look like this: \texttt{\{n:~Nat\}~$\to$ \{a:~Type\}~$\to$ \{b:~Type\}~$\to$ Vect~n~a~$\to$ Vect~n~b~$\to$ Vect~n~(a,b)}. If we do not list these parameters outside of where they are used, as in Figure~\ref{fig:zip}, Idris tries make them implicit automatically.
 
-\paragraph{Correct by construction} Dependent types help us to write programs and functions that are \emph{correct by construction}\,\cite[p. 464]{Pierce:TypeSystems}. When a function is correct by construction, it means the type encodes all the invariants that we want to have hold, and if the type checker agrees that our function has this type, we have proof that our program satisfies our specification. This is directly related to the Curry-Howard correspondence\,\cite[pp. 108]{Pierce:TypeSystems}, which relates logic and type theory. Specifically, logical propositions corresponds to types, and a proof of proposition $P$ corresponds to a term with type $P$. So in other words, a term that is correct by construction, is a proof of its own correctness.
+\begin{figure}
+\begin{alltt}
+filter : (a \(\to\) Bool) \(\to\) Vect n a \(\to\) (p ** Vect p a)
+filter p [] = ( _ ** [] )
+filter p (x::xs) with (filter p xs)
+  | (_ ** tail) =
+    if p x then (_ ** x::tail) else (_ ** tail)
+\end{alltt}
+\caption{Filter function for vectors in Idris.}
+\label{fig:filter}
+\end{figure}
 
-\paragraph{Intrinsic and extrinsic proofs} In the \texttt{zip} function, we have an \emph{intrinsic} proof that the resulting vector is the same length as the two input vectors. It is intrinsic as it is contained in the definition itself. We can also use dependent types when constructing \emph{extrinsic} proofs, proofs residing outside the definition. When using dependent types in this manner, it resembles constructing proofs in intuitionistic logic. In fact, the Curry-Howard correspondence tells us that this is exactly what we are doing. It should be noted that sometimes it is easier to weaken the definition, and instead rely on an external proof for correctness. Dependent types have been implemented in several programming languages, such as Coq\,\cite{Coq}, Agda\,\cite{Agda} and, of course, Idris. 
+\paragraph{Dependent pairs} Consider the function \texttt{filter} in Figure~\ref{fig:filter}. If one na\"{i}vely tried to specify the type of this function, one would quickly run into a problem. What should the length of the resulting \texttt{Vect} be? We cannot know how many elements there will be in the vector beforehand. To solve this problem, we can use a \emph{dependent pair} type. Dependent pairs are similar to a regular product type, but different in the sense that the second element of the pair can depend on the first. This lets us write types like \texttt{(p ** Vect p a)} in \texttt{filter}, where \texttt{p} is determined by the implementation. Notice that in this case, it suffices to specify an underscore (\_) as the first element of the pair, as the type checker can infer it from the parameter \texttt{n} of the second element. However, this will not always be the case.
 
+\paragraph{The \texttt{with} rule} Once again consider the \texttt{filter} function in Figure~\ref{fig:filter}. It might not be clear what it is happening in the second case of the pattern match, specifically where the \texttt{with} rule is used. The \texttt{with} rule allows us to pattern match on intermediate computations. Because matching on a value may change what we know about other values, the \texttt{with} rule allows us to use this information when defining functions. For instance, if we pattern match on a computation returning a \texttt{Vect n a}, the \texttt{n} will always be \texttt{Z} in the \texttt{Nil} case.
+ 
+\paragraph{Correct by construction} Dependent types help us to write programs and functions that are \emph{correct by construction}\,\cite[p. 464]{Pierce:TypeSystems}. When a function is correct by construction, it means the type encodes all the invariants that we want to have hold, and if the type checker agrees that our function has this type, we have proof that our program satisfies our specification. This is directly related to the \emph{Curry-Howard correspondence}\,\cite[pp. 108]{Pierce:TypeSystems}, which relates logic and type theory. In general, logical propositions correspond to types, and a proof of a proposition $P$ corresponds to a term with type $P$. Further, dependent functions correspond to universal quantification, while dependent pairs correspond to existential quantification. This correspondence between type systems and logic means that a term that is correct by construction is a proof of its own correctness.
+
+\paragraph{Intrinsic and extrinsic proofs} In the \texttt{zip} function, we have an \emph{intrinsic} proof that the resulting vector is the same length as the two input vectors. It is intrinsic as it is contained in the definition itself. We can also use dependent types when constructing \emph{extrinsic} proofs, proofs residing outside the definition. When using dependent types in this manner, it resembles constructing proofs in intuitionistic logic. In fact, the Curry-Howard correspondence tells us that this is exactly what we are doing. It should be noted that sometimes it is easier to weaken the definition, and instead rely on an external proof for correctness.
