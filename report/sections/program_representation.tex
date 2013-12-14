@@ -1,48 +1,48 @@
 %!TEX root = ../main.tex
 \subsection{Programs}
 \label{sec:program}
-As previously mentioned a program run by a stack machine is a list of instructions. Our machine's instruction set can be seen in Figure~\ref{fig:inst_set}. Most instructions should be self-explanatory, but for further explanation our stack machine is inspired by Peter Sestofts abstract machine for micro-C\,\cite[pp. 157--161]{Sestoft:PLC}. When executed, an instructions has an effect on the stack specific to each instruction.
+As previously mentioned, a stack machine executes a program as a list of instructions. The instruction set of our machine can be seen in Figure~\ref{fig:inst_set}, along with the stack effect of each instruction.
 
 \begin{figure}
 \centering{
 \begin{tabularx}{\textwidth}{ | X X X | }
   \hline
-  \textbf{Instruction} & \textbf{Stack Before} & \textbf{Stack After} \\ \hline
-  PUSH $i$ & $s$ & $s$, $i$ \\ 
-  ADD & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  SUB & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  MUL & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  DIV & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  EQL & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  LTH & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  NAY & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  IF  & $s$, $b$, $e_{1}$, $e_{2}$ & $s$, (if $b$ $e_{1}$ else $e_{2}$) \\ \hline
+  \textbf{Instruction} & \textbf{Stack before} & \textbf{Stack after} \\ \hline
+  \texttt{PUSH} $i$ & $s$ & $s$, $i$ \\ 
+  \texttt{ADD} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
+  \texttt{SUB} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
+  \texttt{MUL} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
+  \texttt{DIV} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
+  \texttt{EQL} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
+  \texttt{LTH} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
+  \texttt{NAY} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
+  \texttt{IF}  & $s$, $b$, $e_{1}$, $e_{2}$ & $s$, (\texttt{if} $b$ \texttt{then} $e_{1}$ \texttt{else} $e_{2}$) \\ \hline
 \end{tabularx}
 }
-\caption{Instruction set where $s$ represent the invariant part of the stack, $i_n$ the integer arguments, and $b$ the boolean arguments.}
+\caption{Instruction set where $s$ represents the part of the stack untouched by the instruction. $i_n$ denotes integer values, while $b$ denotes Boolean values.}
 \label{fig:inst_set}
 \end{figure}
 
-Looking at this, the problem of stack underflow becomes very apparent. Each instruction seems to require that very specific arguments are on the stack and since this is not encoded in the instruction, these stack requirements are enforced at run time rather compile time. Using dependent types, this encoding can be achieved by representing instructions with a type indexed by its required stack. Just indexing instructions by their required stack, however, is not sufficient. When we later want to build programs from our instructions we wish to be able to chain instructions, creating a sequence for the stack machine to run. To be able to do this, an instruction must also be indexed by what it leaves on the stack. 
+Looking at Figure~\ref{fig:inst_set}, the problem of stack underflow becomes very apparent. Each instruction requires a specific number of elements on the stack, and since this is not encoded in the instruction, these stack requirements must be enforced at run time rather than at compile time. Using dependent types, we can ensure these requirements are met statically. This can be done by encoding the required stack size for an instruction in the type of the instruction. Just indexing instructions by their required stack size, however, is not sufficient. Since we want to be able to create a sequence of instructions, each instruction needs to know how many values the previous instruction left on the stack. This means an instruction must be indexed by the complete stack effect. 
 
 \begin{figure}
 \centering{
 \begin{tabularx}{\textwidth}{ | X X X | }
   \hline
-  \textbf{Instruction} & \textbf{Required Stack} & \textbf{Stack Produced} \\ \hline
-  PUSH $i$ & $0$ & $1$ \\ 
-  ADD & $2$ & $1$ \\
-  SUB & $2$ & $1$ \\
-  MUL & $2$ & $1$ \\
-  DIV & $2$ & $1$ \\
-  EQL & $2$ & $1$ \\
-  LTH & $2$ & $1$ \\
-  NAY & $2$ & $1$ \\
-  IF  & $3$ & $1$ \\ \hline
+  \textbf{Instruction} & \textbf{Minimum stack size} & \textbf{Values left on stack} \\ \hline
+  \texttt{PUSH} $i$ & $0$ & $1$ \\ 
+  \texttt{ADD} & $2$ & $1$ \\
+  \texttt{SUB} & $2$ & $1$ \\
+  \texttt{MUL} & $2$ & $1$ \\
+  \texttt{DIV} & $2$ & $1$ \\
+  \texttt{EQL} & $2$ & $1$ \\
+  \texttt{LTH} & $2$ & $1$ \\
+  \texttt{NAY} & $2$ & $1$ \\
+  \texttt{IF}  & $3$ & $1$ \\ \hline
 
 \end{tabularx}
 }
-\caption{Instruction set with stack effects}
+\caption{Instruction set with stack effects.}
 \label{fig:inst_set_with_effect}
 \end{figure}
 
@@ -63,28 +63,26 @@ data Inst : Nat \(\rightarrow\) Nat \(\rightarrow\) Type where
 \label{fig:idris_inst_set}
 \end{figure}
 
-Since the stack effect of an instruction is a minimum effect, the indices must take base in implicit arguments. This is expressed in Figure~\ref{fig:idris_inst_set} by that i.e. the PUSH $i$ instruction is Inst s (S s) rather than Inst 0 1 as it seen in Figure~\ref{fig:inst_set_with_effect}. 
+Since the stack effect of an instruction represents a change in stack size, the indices must be based on the prior size of the stack, which is an implicit argument. This is expressed in Figure~\ref{fig:idris_inst_set}. For example the type of the \texttt{PUSH i} instruction is \texttt{Inst s (S s)} rather than \texttt{Inst 0 1}, which one might expect from Figure~\ref{fig:inst_set_with_effect}. 
 
 \subsubsection{Program Representation}
-To avoid the underflow problem a program must also have its effect encoded. Similar to instruction this encoding can be done by indexing programs by its required stack. Since we also want to be able to chain programs, just like instructions, the resulting stack of running a program must also be encoded into the type. As such a program is indexed by its stack effect:
-
+To avoid a stack underflow error, the type of a program must encode its stack effect. This can be done in the same way as with instructions. Thus the data type for a program becomes:
 \begin{alltt}
-data Prog : Nat \(\rightarrow\)  Nat \(\rightarrow\)  Type where
+data Prog : Nat \(\rightarrow\) Nat \(\rightarrow\) Type where
 \end{alltt}
-
-Since a program is a list of instructions the value that programs are indexed by should be dictated by the instructions it contains. This means that when constructing programs they should take base in the instructions that they contain. To do this we use a structure similar to a list, as seen in Figure~\ref{fig:idris_impl_of_prg}. An empty program (\texttt{Nil}) is a program that does not change the stack. Adding an instruction to an existing program (\texttt{::}) will construct a new program parametrized by the instructions stack consumption and the programs stack production. Since instruction indices are universally quantified any instruction will fit on any program, but the type of the program constructed will reflect the new stack effect. This means that it is possible to construct programs that will cause stack underflow, but this will be present in the type, hence the stack machine can require a supplied stack to be of a sufficient size to avoid this underflow. This will be further discussed in Section~\ref{sec:running_a_program}.
+The stack effect of a program is directly inferable from the instructions it contains. To do this we use a structure similar to a list, as seen in Figure~\ref{fig:idris_impl_of_prg}. An empty program (\texttt{Nil}) is a program that does not change the stack. Adding an instruction to an existing program (\texttt{::}) will construct a new program, with a stack effect modified by the instruction. Since instruction indices are universally quantified, any instruction will fit on any program. This is potentially dangerous, as it is possible to construct programs that will cause a stack underflow error if run with an insufficient initial stack. As a result, the stack machine must require an initial stack of the correct size before running a program, which will be further discussed in Section~\ref{sec:running_a_program}.
 
 \begin{figure}
 \begin{alltt}
-data Prog : Nat \(\rightarrow\)  Nat \(\rightarrow\)  Type where
+data Prog : Nat \(\rightarrow\) Nat \(\rightarrow\) Type where
   Nil  : Prog s s
-  (::) : Inst s s\('\) \(\rightarrow\)  Prog s\('\) s\('\)\('\) \(\rightarrow\)  Prog s s\('\)\('\)
+  (::) : Inst s s\('\) \(\rightarrow\) Prog s\('\) s\('\)\('\) \(\rightarrow\) Prog s s\('\)\('\)
 \end{alltt}
 \caption{Idris representation of well-stacked programs}
 \label{fig:idris_impl_of_prg}
 \end{figure}
 
-In addition to constructing programs from scratch, it can also be useful to concatenate them. Again we draw on our programs similarities with lists and use a similar name and notation to the \texttt{append} (here \texttt{+++}) operation seen in many functional programming languages.
+In addition to constructing programs from scratch, it can also be useful to append one program to another. Due to the similarities between our program representation and lists, we use a similar name and notation to the \texttt{++} function found in many functional programming languages. Although it is defined as \texttt{+++} in Idris, we will refer to it as \texttt{append}.
 
 \begin{alltt}
 (+++) : Prog s s\('\) -> Prog s\('\) s\('\)\('\) -> Prog s s\('\)\('\)
@@ -92,4 +90,4 @@ In addition to constructing programs from scratch, it can also be useful to conc
 (+++) (i :: p1) p2 = i :: (p1 +++ p2)
 \end{alltt}
 
-The type of \texttt{append} dictates that given two programs with stack effects $(s, s')$ and $(s', s'')$ we can construct a program with stack effect $(s, s'')$. As they are also implicit arguments to the \texttt{append} function, any two programs can be chained together, if the Idris type checker can infer the arguments.
+The type of \texttt{append} specifies that given two programs with stack effects $(s, s')$ and $(s', s'')$, we can construct a program with stack effect $(s, s'')$. Because the stack effects are implicit arguments to the \texttt{append} function, any two programs can be concatenated, if the Idris type checker can infer the arguments.

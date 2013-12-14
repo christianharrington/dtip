@@ -2,14 +2,12 @@
 \subsection{Running a program}
 \label{sec:running_a_program}
 % Running a program
-Now that we have a way of representing programs, and a function for converting our expression language to this representation ($compile$), we need a way of executing a program. A function running a program must use the information encoded into the indices of the type of the program to ensure no stack underflow. This means that no program should be runnable without a supplied stack satisfying the programs requirements. As such we can define an invariant dictating that a function $run$ taking a program $Prog\;s\;s'$, and a stack of size $s$ will result in a stack of size $s'$. This invariant can be seen in Figure~\ref{fig:run_function}. We use the build-in vector type from Idris to represent the stack as this allows us to specify the size of the stack. For the sake of simplicity all values on the stack are represented by the built-in Idris integer. 
+Now that we have a way of representing programs, and a function for compiling terms in our well-typed representation to programs, we need a way of executing these programs. A function for running such a program must use the stack effect encoded in the type of the program to ensure no stack underflow errors occur. The \texttt{run} function should not accept any program without a initial stack satisfying the requirements of the program. This invariant can be seen in Figure~\ref{fig:run_function}. We use the built-in vector type from Idris to represent the stack as this allows us to specify the size of the stack. For the sake of simplicity all values on the stack are represented by the built-in Idris integer type, \texttt{Int}. 
 
 \begin{figure}
 \begin{alltt}
-run : Prog s s' -> Vect s Int -> Vect s' Int
+run : Prog s s\('\) \(\to\) Vect s Int \(\to\) Vect s\('\) Int
 \end{alltt}
-\caption{The signature of our run function. The first argument is the function to be run, and the second argument is the stack for the program to be run on. The result is the stack after the program has been run.}
+\caption{The signature of our \texttt{run} function. The first argument is the program to be run, and the second argument is the stack for the program to be run with. The result is the stack after the program has been run.}
 \label{fig:run_function}
 \end{figure}
-
-Since the first instruction in the program defines the programs stack requirement (by the definition of programs) and $run$ looks at one instruction at a time, the type of $run$, saying that the stack is a vector with a size that satisfies the programs requirement, ensures that it will never cause a stack underflow.
