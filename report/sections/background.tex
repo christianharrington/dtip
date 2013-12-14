@@ -60,7 +60,6 @@ The simply typed lambda calculus is a formal system based on the untyped lambda 
 \end{figure}
 \end{center}
 
-\todo{Move explanation of figure 1 from sec 4 to here}
 The simply typed lambda calculus has the property of \emph{strong normalization}\,\cite[pp. 149]{Pierce:TypeSystems}: After a finite number of reductions, we will arrive at a normal form. A term is in normal form if no evaluation rules apply to it. This can be seen in the terms $v_{1}$ and $v_{2}$ in Figure~\ref{fig:simple-evaluation-rules}. They are values, meaning no evaluation rules apply to them. Strong normalization means that when evaluating a term, the evaluation will always terminate, and the resulting term will be a value. A consequence of this is that the simply typed lambda calculus is not Turing-complete.
 
 This system will be the foundation of the language presented in the next sections. We will also add several extensions to the calculus, such as sum and product types.
