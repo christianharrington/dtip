@@ -1,3 +1,10 @@
 %!TEX root = ../main.tex
 \section{Conclusion}
 \label{sec:conclusion}
+The goal of this project was to gain practical experience with programming with dependent types. In this respect, the project has been a great success. All the authors had some experience with dependent types beforehand, but mostly from a theorem proving context. While this knowledge was extremely valuable, ``regular'' programming with dependent types was a very different experience. 
+
+With regards to our simple programming language, we implemented many of the features and components we had planned, with some notable exceptions. For instance, the stack machine only covers part of our programming language, due to the very late discovery of a good way to model variable stack effects in instructions.  
+
+While our programming language is far from being practical, we believe the well-typed representation of it has several interesting properties. First, it lets us create terms which are correct by construction, because the invariants from the typing rules are encoded in the Idris data type. Secondly, it allows us to define a well-typed interpreter, which ensures that the well-typed terms are interpreted as corresponding Idris terms. Using bidirectional typing, we have shown how the well-typed representation can be used as an underlying syntax for a more sparsely annotated surface syntax, thus enabling us to potentially create a user friendly concrete syntax with a well-typed backend. By building a stack machine which only accepts ``well-stacked'' programs, we have utilized a program representation indexed over stack effects to show how stack underflows can be avoided. Finally, we have investigated how the introduction of partiality through general recursive functions influences the way evaluation of well-typed terms must be handled to preserve the established invariants.
+
+Through the implementation of these components, we believe we have gained a good grasp on programming with dependent types.
