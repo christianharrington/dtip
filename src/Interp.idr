@@ -85,7 +85,7 @@ using (G: Vect n Tip)
   optimize (Fix e)                   = Fix (optimize e)
   optimize a                         = a
 
-  partial -- We think it is total, but the totality checker disagrees
+  partial
   interp : Env G -> Expr G t -> interpTip t
   interp env (Var k)       = lookup k env
   interp env (Val i)       = i
@@ -108,6 +108,10 @@ using (G: Vect n Tip)
   interp env (OpB Eql a b) = (interp env a) == (interp env b)
   interp env (OpB Lt  a b) = (interp env a) < (interp env b)
   interp env (OpU Nay a)   = not (interp env a)
+  interp env (Fix f)       = (interp env f) (interp env (Fix f)) 
+
+  app : |(f : Expr G (TipFun a t)) -> Expr G a -> Expr G t
+  app = \f, a => App f a
  
   dsl expr
     lambda      = Lam
@@ -124,3 +128,15 @@ using (G: Vect n Tip)
 
   add' : Expr Nil (TipFun TipInt (TipFun TipInt TipInt))
   add' = expr (\x => (\y => OpB Add x y))
+
+  partial
+  fact : Expr G (TipFun TipInt TipInt)
+  fact = Lam (If (OpB Eql (Var stop) (Val 0))
+                 (Val 1) (OpB Mul (app fact (OpB Sub (Var stop) (Val 1)))
+                                  (Var stop)))
+
+  partial
+  forever : Expr G (TipFun TipInt TipInt)
+  forever = (Lam (If (OpB Eql (Var stop) (Val 1))
+                     (app forever (Val 1))
+                     (Val 0)))

@@ -1,12 +1,10 @@
 module StackMachine
-import Tip
 import Interp
-import NatCmp
 
 %default total
 
 data Eff : Type where
-  Flat:        Eff 
+  Flat:         Eff 
   Inc  : Nat -> Eff
   Dec  : Nat -> Eff
 
@@ -93,7 +91,7 @@ using (G: Vect n Tip)
   
   partial -- Should be total when covering all terms
   compile : Expr G t -> CompEnv G n -> getProg s (getEff t)
-  compile U                 ce    = StackMachine4.Nil
+  compile U                 ce    = StackMachine.Nil
   compile (Val i)           ce    = [PUSH i]
   compile (Boo True)        ce    = [PUSH 1]
   compile (Boo False)       ce    = [PUSH 0]
