@@ -15,13 +15,13 @@ Both of the above issues could be solved by having an instruction where the effe
 \begin{figure}
 \begin{alltt}
 stackProduce : Eff \(\to\) Nat \(\to\) Nat
-stackProduce Flat n = n
+stackProduce Flat    n = n
 stackProduce (Inc Z) n = S n
 stackProduce (Inc m) n = S (m+n)
 stackProduce (Dec _) n = n
 
 stackReq : Eff \(\to\) Nat \(\to\) Nat
-stackReq Flat n = n
+stackReq Flat    n = n
 stackReq (Inc x) n = n
 stackReq (Dec Z) n = S n
 stackReq (Dec m) n = S (m+n)

@@ -10,12 +10,12 @@ As previously mentioned, a stack machine executes a program as a list of instruc
   \textbf{Instruction} & \textbf{Stack before} & \textbf{Stack after} \\ \hline
   \texttt{PUSH} $i$ & $s$ & $s$, $i$ \\ 
   \texttt{ADD} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  \texttt{SUB} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  \texttt{MUL} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  \texttt{DIV} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  \texttt{EQL} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  \texttt{LTH} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
-  \texttt{NAY} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}+i_{2})$ \\
+  \texttt{SUB} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}-i_{2})$ \\
+  \texttt{MUL} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}*i_{2})$ \\
+  \texttt{DIV} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}/i_{2})$ \\
+  \texttt{EQL} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}==i_{2})$ \\
+  \texttt{LTH} & $s$, $i_{1}$, $i_{2}$ & $s$, $(i_{1}<i_{2})$ \\
+  \texttt{NAY} & $s$, $b$ & $s$, $\neg b$ \\
   \texttt{IF}  & $s$, $b$, $e_{1}$, $e_{2}$ & $s$, (\texttt{if} $b$ \texttt{then} $e_{1}$ \texttt{else} $e_{2}$) \\ \hline
 \end{tabularx}
 }
@@ -37,7 +37,7 @@ Looking at Figure~\ref{fig:inst_set}, the problem of stack underflow becomes ver
   \texttt{DIV} & $2$ & $1$ \\
   \texttt{EQL} & $2$ & $1$ \\
   \texttt{LTH} & $2$ & $1$ \\
-  \texttt{NAY} & $2$ & $1$ \\
+  \texttt{NAY} & $1$ & $1$ \\
   \texttt{IF}  & $3$ & $1$ \\ \hline
 
 \end{tabularx}
@@ -85,7 +85,7 @@ data Prog : Nat \(\rightarrow\) Nat \(\rightarrow\) Type where
 In addition to constructing programs from scratch, it can also be useful to append one program to another. Due to the similarities between our program representation and lists, we use a similar name and notation to the \texttt{++} function found in many functional programming languages. Although it is defined as \texttt{+++} in Idris, we will refer to it as \texttt{append}.
 
 \begin{alltt}
-(+++) : Prog s s\('\) -> Prog s\('\) s\('\)\('\) -> Prog s s\('\)\('\)
+(+++) : Prog s s\('\) \(\rightarrow\) Prog s\('\) s\('\)\('\) \(\rightarrow\) Prog s s\('\)\('\)
 (+++) Nil p2       = p2
 (+++) (i :: p1) p2 = i :: (p1 +++ p2)
 \end{alltt}

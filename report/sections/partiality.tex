@@ -121,7 +121,7 @@ In \textit{Types and Programming Languages}, Pierce defines a very concise and e
 \label{fig:Pierce-substitution}
 \end{figure}
 
-Using dependent types, we can give a very expressive definition of substitution, such as the one in Figure~\ref{fig:subst}, which is used for the \texttt{Step} relation. In contrast to Pierce's implementation, our substitution function has the added guarantees that substitution preserves typing, and that the variable on which we perform substitution is actually in the context. This is guaranteed by our richer representation of de Bruijn-indices as proofs of membership in a typing context.  
+Using dependent types, we can give a very expressive definition of substitution, such as the one in Figure~\ref{fig:subst}, which is used for the \texttt{Step} relation. In contrast to Pierce's implementation, our substitution function has the added guarantees that substitution preserves typing, and that the variable on which we perform substitution is actually in the context. This is guaranteed by our richer representation of de Bruijn indices as proofs of membership in a typing context.  
 \begin{figure}
 \begin{alltt}
 subst : \{Gglob : Vect (S n) Tip\} \(\rightarrow\) \{Glam: Vect m Tip\} \(\rightarrow\) 

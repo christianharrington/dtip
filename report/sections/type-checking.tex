@@ -44,26 +44,26 @@ When using these judgments, we say that we are either in \emph{checking} or \emp
 \begin{alltt}
 mutual
  data CheckTerm : Type where
-   lInf  : InfTerm -> CheckTerm -- Switch to inference mode
-   lLam  : CheckTerm -> CheckTerm
-   lIf   : CheckTerm -> CheckTerm -> CheckTerm -> CheckTerm
-   lPair : CheckTerm -> CheckTerm -> CheckTerm
-   lInL  : CheckTerm -> CheckTerm
-   lInR  : CheckTerm -> CheckTerm
-   lCase : InfTerm -> CheckTerm -> CheckTerm -> CheckTerm
+   lInf  : InfTerm \(\to\) CheckTerm -- Switch to inference mode
+   lLam  : CheckTerm \(\to\) CheckTerm
+   lIf   : CheckTerm \(\to\) CheckTerm \(\to\) CheckTerm \(\to\) CheckTerm
+   lPair : CheckTerm \(\to\) CheckTerm \(\to\) CheckTerm
+   lInL  : CheckTerm \(\to\) CheckTerm
+   lInR  : CheckTerm \(\to\) CheckTerm
+   lCase : InfTerm \(\to\) CheckTerm \(\to\) CheckTerm \(\to\) CheckTerm
    
  data InfTerm : Type where
-   lAnno : CheckTerm -> Tip -> InfTerm -- Annotate a checkable type with a type
-   lApp  : InfTerm -> CheckTerm -> InfTerm
+   lAnno : CheckTerm \(\to\) Tip \(\to\) InfTerm -- Annotate a checkable type with a type
+   lApp  : InfTerm \(\to\) CheckTerm \(\to\) InfTerm
    lUnit : InfTerm
-   lVar  : Nat -> InfTerm
-   lVal  : Int -> InfTerm
-   lBoo  : Bool -> InfTerm
-   lFst  : InfTerm -> InfTerm
-   lSnd  : InfTerm -> InfTerm
-   lFix  : InfTerm -> InfTerm
-   lOpU  : UnOp -> InfTerm
-   lOpB  : BinOp -> InfTerm
+   lVar  : Nat \(\to\) InfTerm
+   lVal  : Int \(\to\) InfTerm
+   lBoo  : Bool \(\to\) InfTerm
+   lFst  : InfTerm \(\to\) InfTerm
+   lSnd  : InfTerm \(\to\) InfTerm
+   lFix  : InfTerm \(\to\) InfTerm
+   lOpU  : UnOp \(\to\) InfTerm
+   lOpB  : BinOp \(\to\) InfTerm
 \end{alltt}
 \caption{The raw representation split into checking and inference terms, respectively. Again, \texttt{UnOp} and \texttt{BinOp} have been omitted for brevity. We have chosen to prefix all terms with an `\texttt{l}' in order to keep a close correspondence with the well-typed representation from Section~\ref{sec:a-well-typed-expression-language}, while still emphasizing that they are different.}
 \label{fig:bidirectional-terms}
@@ -228,7 +228,7 @@ In the case of the application rule (\textsc{T-App}), the important thing to und
 \AxiomC{$\Gamma \vdash e_{1} \Leftarrow \tau$}
 \AxiomC{$\Gamma \vdash e_{2} \Leftarrow \tau$}
 \RightLabel{\sc{(T-If)}}
-\TrinaryInfC{$\Gamma \vdash$ \texttt{If} $e$ \texttt{Then} $e_{1}$ \texttt{Else} $e_{2} \Leftarrow \tau$}
+\TrinaryInfC{$\Gamma \vdash$ \texttt{If} $e_{1}$ \texttt{Then} $e_{2}$ \texttt{Else} $e_{3} \Leftarrow \tau$}
 \end{prooftree}
 
 \begin{prooftree}
@@ -267,29 +267,33 @@ In the case of the application rule (\textsc{T-App}), the important thing to und
 
 \subsection{The Algorithm}
 The essential parts of the mutually recursive functions \texttt{check} and \texttt{infer}, together forming the bidirectional typing algorithm, are presented in Figure~\ref{fig:bidirectional-algorithm}. When considered in connection with the typing rules from the previous section, most of the cases are a straightforward translation of a bidirectional typing rule.
-\todo{Check that algorithm figure corresponds with code.}
+
 \label{sec:type-checking-the-algorithm}
 \begin{figure}
 \begin{alltt}
 mutual
-  check : CheckTerm -> (G: Vect n Tip) -> (t: Tip) -> Maybe (Expr G t)
-  check (lInf iterm) G t             = do (t' ** e) <- infer iterm G
-                                          expr <- exprTipEqSwap t' t G (decEq t' t) e
-                                          return expr
-  check (lLam body) G (TipFun t t')  = do b <- check body (t :: G) t'
+  %assert_total
+  check : CheckTerm \(\to\) (G: Vect n Tip) \(\to\) (t: Tip) \(\to\) Maybe (Expr G t)
+  check (lInf iterm) G t             = do (t' ** e)  \(\leftarrow\) infer iterm G
+                                          e'         \(\leftarrow\) exprTipEqSwap t' t G (decEq t' t) e
+                                          return e' 
+  check (lLam body) G (TipFun t t')  = do b \(\leftarrow\) check body (t :: G) t'
                                           return $ Lam b
   \vdots
   check _ _ _                        = Nothing
 
-  infer : InfTerm -> (G: Vect n Tip) -> Maybe (t: Tip ** Expr G t)
-  infer (lAnno cterm t) G     = do expr <- check cterm G t -- Annotate a term with type t
-                                   return (_ ** expr)
-  infer (lApp f x) G          = do (TipFun t t' ** f') <- infer f G
-                                   x'                  <- check x G t
-                                   return (_ ** App f' x')
-  infer (lVar n) G            = do i        <- natToFinFromVect n G
-                                   (_ ** p) <- makeHasType i G
-                                   return (_ ** Var p) 
+  %assert_total
+  infer : InfTerm \(\to\) (G: Vect n Tip) \(\to\) Maybe (t: Tip ** Expr G t)
+  infer (lAnno cterm t) G     = do e \(\leftarrow\) check cterm G t
+                                   return (_ ** e)
+  infer (lApp f x) G          = do (t' ** f')      \(\leftarrow\) infer f G
+                                   ((a, b) ** f'') \(\leftarrow\) isTipFun f'
+                                   x'              \(\leftarrow\) check x G a
+                                   return (_ ** App f'' x')
+  infer (lVar n) G            = case natToFinFromVect n G of
+                                  Just i => let (_ ** p) = makeHasType i G in
+                                              Just (_ ** Var p)
+                                  Nothing => Nothing
   infer (lVal i) G            = Just (_ ** Val i)
   \vdots
   infer _ _                   = Nothing
@@ -301,6 +305,8 @@ mutual
 The only interesting cases are \texttt{lInf} and \texttt{lVar}. \texttt{lInf} is the case for the \textsc{T-CheckInfer} rule, which takes the algorithm from checking to inference mode. First, a type \texttt{t'} for the term in question (\texttt{iterm}) is inferred, and then a call to the function \texttt{exprTipEqSwap} creates an expression of type \texttt{Expr G t} (\texttt{expr}) from an expression of type \texttt{Expr G t'} (\texttt{e}), if \texttt{t} and \texttt{t'} are equal.
 
 The \texttt{lVar} case has to construct a \texttt{HasType} predicate from a de Bruijn index implemented as a natural number. This is done by first creating a \texttt{Fin} value with the same bound as the enclosing environment \texttt{G}, by a call to \texttt{natToFinFromVect}. Note that this may fail, since the input index could be any natural number. Next, \texttt{makeHasType} constructs the appropriate \texttt{HasType} predicate recursively by examining the previously generated \texttt{Fin} value. Because the algorithm simply returns a variable with the type at the given location in the environment, this may not be same type as the type expected by the user, if the raw input lambda term has not been correctly constructed. Recall from Section~\ref{sec:dependent-types-idris} that the Idris type checker can infer the first element of a dependent pair by unification when it is not ambiguous.
+
+Note that we have had to assert that both \texttt{check} and \texttt{infer} are total (by marking them with \texttt{\%assert\_total}), since the totality checker says that there is possibly a path \texttt{check} $\longrightarrow$ \texttt{infer} $\longrightarrow$ \texttt{infer} which would lead to infinite recursion. However, since we are working with finite data (and not codata), it is impossible to construct an input which would cause these functions to loop indefinitely, as we are always making recursive calls on structurally smaller terms. Therefore, we are convinced that these functions must be total.
 
 \subsection{Discussion}
 It should be apparent from this section that bidirectional typing has its merits. However, this system is not the holy grail of type checking. One of the obvious downsides is that we have to split the definition into two complimentary halves, which does not necessarily lead to the most intuitive representation. Also, it means that the abstract syntax tree is ``polluted'' with type checking mechanics such as the \texttt{lInf} constructor. Aside from intuitive issues, a more serious problem with this representation is that we cannot substitute any variable for an arbitrary term of the same type\,\cite{Weirich:bidirectional}. Since variables must be typed in inference mode, we cannot substitute a variable with any term which must be checked in checking mode. In practice, these issues can be remedied by defining a bijection between untyped terms and bidirectional terms, such that we can perform substitution in a more suitable representation, but recover the bidirectional representation when needed.

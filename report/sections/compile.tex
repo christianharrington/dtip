@@ -4,9 +4,9 @@ Now that we have a representation for programs that tracks stack effects, we can
 
 \begin{alltt}
 data Eff : Type where
-	Inc  : Nat \(\rightarrow\) Eff
-	Dec  : Nat \(\rightarrow\) Eff
-	Flat :         Eff
+  Inc  : Nat \(\rightarrow\) Eff
+  Dec  : Nat \(\rightarrow\) Eff
+  Flat :        Eff
 
 getProg : Nat \(\rightarrow\) Eff \(\rightarrow\) Type
 getProg n (Inc m) = Prog n (S (m + n))
@@ -46,7 +46,7 @@ Compiling a program, given an \texttt{Expr G t} and a \texttt{CompEnv G t}, will
 \begin{alltt}
 partial
 compile : Expr G t \(\to\) CompEnv G n \(\to\) getProg s (getEff t)
-compile U                 ce    = StackMachine4.Nil
+compile U                 ce    = StackMachine.Nil
 compile (Val i)           ce    = [PUSH i]
 compile (Boo True)        ce    = [PUSH 1]
 compile (Boo False)       ce    = [PUSH 0]
