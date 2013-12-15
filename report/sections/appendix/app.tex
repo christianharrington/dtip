@@ -1,0 +1,26 @@
+\documentclass[twoside]{article}
+\usepackage{listings}
+\usepackage[margin=1in]{geometry}
+
+\pagestyle{empty}
+\begin{document}
+\texttt{
+  \appendix
+  \section{Code}
+  \subsection{Stack Machine}
+  \lstinputlisting[basicstyle=\small,numbers=left,breaklines=true]{../../../src/StackMachine.idr}
+  \clearpage
+  \subsection{Well-Typed Interpreter \& Well-Typed Representation}
+  \lstinputlisting[basicstyle=\small,numbers=left,breaklines=true]{../../../src/Interp.idr}
+  \clearpage
+  \subsection{Tip \& Decidable Equality}
+  \lstinputlisting[basicstyle=\small,numbers=left,breaklines=true]{../../../src/Tip.idr}
+  \clearpage
+  \subsubsection{Raw Simply Typed Lambda Calculus \& Type Checker}
+  \lstinputlisting[basicstyle=\small,numbers=left,breaklines=true]{../../../src/RawSTLC.idr}
+  \clearpage
+  \subsection{Step Relation}
+  \lstinputlisting[basicstyle=\small,numbers=left,breaklines=true]{../../../src/InterpR.idr}
+  \clearpage
+}
+\end{document}

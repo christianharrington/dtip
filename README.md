@@ -1,8 +1,20 @@
-DTIP
+Practical Experience With Dependent Types
 ====
-Dependently Typed Idris Programming language
+Introduction
+------
+The report in /report/ describes the implementation and design of a simple programming language in Idris.
 
-Problem statement
+In /src/ the actual implementation can be found. Most of the source code is discussed and/or described in the report. Specifically: 
+
+- Section 3, about the raw representation of simply type lambda calculus, relates to STLC.idr
+- Section 4, which focuses on the well-typed expression language, relates to Interp.idr and Tip.idr 
+- Section 5, discussing type checking, relates to RawSTLC.idr
+- Section 6, describing a well-stacked stack machine, relates to StackMachine.idr 
+- Section 7, focusing on partiality, relates to Step.idr.
+
+All files have been tested to type check with release version 0.9.10.1 of Idris.
+
+Problem Statement
 -----------------
 The goal of this project is to gain hands-on experience with programming with dependent types, specifically through learning the Idris programming language. This will be accomplished by implementing a simple programming language in Idris. 
 
@@ -37,4 +49,3 @@ Schedule
 		- Stack machine
 		- Expand well-typed interpreter
 - 1. December – 16. December: Final report pass.
-

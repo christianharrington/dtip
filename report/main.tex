@@ -1,5 +1,6 @@
 %!TEX TS-options = -shell-escape
 \documentclass[oribibl, fleqn]{llncs}
+
 \pagestyle{headings} %page numbers
 \usepackage{makeidx}  % allows for indexgeneration
 \usepackage{tabularx}
@@ -84,6 +85,7 @@
 \bibliography{bibliography}
 
 \clearpage %To ensure pagebreak before appendices
-\appendix
+\section{Appendix}
+\includepdf[pages=-]{sections/appendix/app.pdf}
 
 \end{document}
