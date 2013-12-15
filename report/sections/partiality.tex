@@ -101,9 +101,9 @@ Evaluating a non-terminating expression is equivalent to giving an infinitely lo
 The \texttt{Step} relation depends on the definition of normal forms presented in Figure~\ref{fig:normal-forms}. Because we do not reduce under lambda abstractions, and at the same time reduce arguments before substitution, \texttt{NormalForm} is a representation of terms in \emph{weak normal form}\,\cite{Sestoft:reduction}. Since we have no evaluation rules for lambda abstractions and do not represent variables as normal forms (although a variable technically is in normal form), evaluation can only happen on closed terms.
 
 \subsubsection{Shifting and Substitution}
-Substitution is used for reduction of lambda terms. For closed terms, every variable can be substituted with an expression of the same type using $\beta$-reduction, yielding a term consisting only of values. When working with de Bruijn indices, substitution requires the operation of shifting, since remaining variables must be renumbered whenever one variable has been substituted.
+Substitution is used for reduction of lambda terms. We can substitute a variable with an expression of the same type using $\beta$-reduction, yielding a term consisting only of values. When working with de Bruijn indices, substitution requires the operation of shifting, since remaining variables must be renumbered whenever one variable has been substituted.
 
-In \textit{Types and Programming Languages}, Pierce defines a very concise and elegant way of doing shifting and substitution\,\cite[pp. 79-80]{Pierce:TypeSystems}. His definition of shifting, shown in Figure~\ref{fig:Pierce-shifting}, defines a \textit{d}-place shift of a term \textit{t} above cutoff \textit{c}. Figure~\ref{fig:Pierce-substitution} gives defines substitution of a term \textit{s} for a variable \textit{j} in a term \textit{t}.
+In \textit{Types and Programming Languages}, Pierce defines a very concise and elegant way of doing shifting and substitution\,\cite[pp. 79-80]{Pierce:TypeSystems}. His definition of shifting, shown in Figure~\ref{fig:Pierce-shifting}, defines a \textit{d}-place shift of a term \textit{t} above cutoff \textit{c}. Figure~\ref{fig:Pierce-substitution} defines substitution of a term \textit{s} for a variable \textit{j} in a term \textit{t}.
 
 \begin{figure}
 \[\uparrow \begin{matrix} d \\ c \end{matrix}(k)\quad = \begin{cases} k \\ k+d \end{cases}\begin{matrix} if\quad k < c \\ if\quad k \ge c \end{matrix}\]
@@ -146,9 +146,9 @@ subst \{Glam\} \{Gglob\}        (Var y) i v =
 Our implementation of substitution has the following properties, which may not all be immediately obvious:
 \begin{enumerate}
 \item A variable is either defined in the local context, \texttt{Glam}, or the global context \texttt{Gglob}. Local variables are those which are added to the context when the function goes under a lambda abstraction (hence the name \texttt{Glam}).
-\item Because our evaluation order is \texttt{call-by-value}\,\cite[pp. 57-58]{Pierce:TypeSystems}, we always substitute on the first variable in the global context, \texttt{Gglob}, denoted by the membership predicate \texttt{HasType fZ Gglob t'} on which \texttt{subst} is parameterized. 
+\item Because our evaluation order is \emph{call-by-value}\,\cite[pp. 57-58]{Pierce:TypeSystems}, we always substitute on the first variable in the global context, \texttt{Gglob}, denoted by the membership predicate \texttt{HasType fZ Gglob t'} on which \texttt{subst} is parameterized. 
 \item We must always return an expression defined in the context \texttt{Glam~++~(tail Gglob)}. That is, a context in which the first variable from the global context has been removed (as per property 2).
-\item The cutoff from Definition 6.2.1 is given implicitly by the length of the local context, \texttt{Glam}. This means that all variables \texttt{Glam} by definition are below the cutoff, while all variable in \texttt{Gglob} are equal to or greater than the cutoff.
+\item The cutoff from Definition 6.2.1 is given implicitly by the length of the local context, \texttt{Glam}. This means that all variables in \texttt{Glam} by definition are below the cutoff, while all variables in \texttt{Gglob} are equal to or greater than the cutoff.
 %\item The expression which we substitute in, \texttt{v}, is defined in the context \texttt{tail Gglob}, due to property 2.
 \end{enumerate}
 
@@ -165,7 +165,7 @@ splitVar : {G: Vect m Tip} \(\rightarrow\) \{G': Vect n Tip\} \(\rightarrow\) Ha
 \end{figure}
 
 \begin{itemize}
-\item If \texttt{y} is local, we only need to append \texttt{tail Gglob} to the context of \texttt{y}, as per properties 2 and 3. This is equivalent to the \textit{otherwise} case in Definition 6.2.4. Due to property 4, \texttt{y} matches the $k < c$ case of the variable case in Definition 6.2.1, so no shifting needs to be performed.
+\item If \texttt{y} is local, we only need to append \texttt{tail Gglob} to the context of \texttt{y}, as per properties 2 and 3. This is equivalent to the \textit{otherwise} case in the first case of Definition 6.2.4. Due to property 4, \texttt{y} matches the $k < c$ case of the variable case in Definition 6.2.1, so no shifting needs to be performed.
 \item If \texttt{y} is global, then it might be the first variable in the global context, which means that \texttt{v} must be substituted for \texttt{y} (see property 2). We determine this by a call to the \texttt{substGlobal} function (Figure~\ref{fig:substGlobal}).
 \end{itemize}
 
@@ -181,7 +181,7 @@ splitVar : {G: Vect m Tip} \(\rightarrow\) \{G': Vect n Tip\} \(\rightarrow\) Ha
 \label{fig:substGlobal}
 \end{figure}
 
-\texttt{substGlobal} performs two important tasks by recursion on a \texttt{HasType} membership proof: (1) If \texttt{y} is indeed the first variable in the global context, then Idris's type system can unify \texttt{t} and \texttt{t'}, the types of \texttt{y} and \texttt{v}, since \texttt{v} has the same type as the first variable in \texttt{Gglob} (see type of \texttt{subst} or \texttt{substGlobal}). Hence substitution must be performed, which is equivalent to returning \textit{s} in the first case of Definition 6.2.4. (2) If \texttt{y} is not the first variable, then \texttt{substGlobal} shifts it down (from \texttt{pop x} to \texttt{x}), to account for the substitution of the first variable. This has the same effect as explicitly adding a shift down on the evaluation rule for lambda abstractions, as suggested by Pierce\,\cite[p.~81]{Pierce:TypeSystems}.
+\texttt{substGlobal} performs two important tasks by recursion on a \texttt{HasType} membership proof: (1) If \texttt{y} is indeed the first variable in the global context, then Idris's type system can unify \texttt{t} and \texttt{t'}, the types of \texttt{y} and \texttt{v}, since \texttt{v} has the same type as the first variable in \texttt{Gglob} (see type of \texttt{subst} or \texttt{substGlobal}). Hence substitution must be performed, which is equivalent to returning \textit{s} in the first case of Definition 6.2.4. (2) If \texttt{y} is not the first variable, then \texttt{substGlobal} shifts it down (from \texttt{pop y} to \texttt{y}), to account for the substitution of the first variable. This has the same effect as explicitly adding a shift down on the evaluation rule for lambda abstractions, as suggested by Pierce\,\cite[p.~81]{Pierce:TypeSystems}.
 
 The value returned by \texttt{substGlobal} has type \texttt{Expr (tail Gglob) t}, regardless of whether substitution was performed. In accordance with properties 3 and 4, this value must now be shifted \textit{d} places up, where \textit{d} denotes the length of the local context, to obtain an \texttt{Expr (Glam ++ (tail Gglob)) t}. In the call to \texttt{weaken} (Figure~\ref{fig:weaken}) in \texttt{subst}, \texttt{prepend} performs the shifting corresponding to the $k \ge c$ case of the variable case in Definition 6.2.1. \texttt{prepend} simply performs \texttt{pop} \textit{d} times on any variable in the input expression, resulting in a \textit{d}-place shift. \texttt{subst} calls \texttt{weaken} with \texttt{E} defined as initially empty and \texttt{F} as the local context.
 
@@ -201,7 +201,7 @@ weaken F (App f v) = App (weaken F f) (weaken F v)
 \label{fig:weaken}
 \end{figure}
 
-Since we do not shift variables up whenever we go under a lambda abstraction, but instead shift up in the \texttt{Var} case, the lambda abstraction and application cases from Definition 6.2.4 are as trivial as shown in \texttt{subst}.
+Since we do not shift variables up whenever we go under a lambda abstraction, but instead shift them up in the \texttt{Var} case if needed, the lambda abstraction and application cases from Definition 6.2.4 are as trivial as shown in \texttt{subst}.
 
 % The first case of definition 6.2.4 is the \texttt{Var} case. Based on the idea behind the cutoff parameter for shifting, we handle the \texttt{Var} case by first observing that \texttt{e} must be defined in a local context of \textit{m} variables, \texttt{Glam}, and a global non-empty context, \texttt{Gglob}. The variable on which we perform substitution is always the first variable in \texttt{Gglob}. The local context is added to each time we go under a lambda abstraction (hence the name, Glam). Variables in \texttt{Glam} are by definition below the cutoff and variables in the global context \texttt{Gglob} are by definition equal to or above the cutoff.
 
